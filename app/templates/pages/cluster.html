@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ cluster.name }} · Batch{% endblock %}
+{% block content %}
+<p><a href="/applications" class="back">‹ Applications</a></p>
+<h1 class="tight">{{ cluster.name }}</h1>
+<p class="subtitle">Review once, then approve. The hub opens each advert in turn for you to apply.</p>
+
+{% if saved %}<p class="notice ok" role="status">Saved.</p>{% endif %}
+
+<section>
+  <h2>Jobs in this batch ({{ rows | length }})</h2>
+  <ul class="rows">
+    {% for link, job in rows %}
+    <li>
+      <span>
+        <strong>{{ job.title }}</strong>
+        <small>{{ job.company }}{% if job.location %} · {{ job.location }}{% endif %} · match {{ job.score }}</small>
+        {% for w in warnings.get(job.id, []) %}<small class="warn-text">⚠ {{ w.reason }}</small>{% endfor %}
+      </span>
+      <form method="post" action="/clusters/{{ cluster.id }}/remove/{{ job.id }}">
+        {{ csrf_field(request) }}
+        <button type="submit" class="secondary outline" aria-label="Remove {{ job.title }} from batch">Remove</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<form method="post" action="/clusters/{{ cluster.id }}">
+  {{ csrf_field(request) }}
+  <section>
+    <h2>Shared details</h2>
+    <div class="card-block">
+      <label>Batch name
+        <input name="name" value="{{ cluster.name }}" maxlength="80" required>
+      </label>
+      <label>CV to send
+        <select name="cv_version_id">
+          <option value="">None chosen</option>
+          {% for cv in cvs %}
+          <option value="{{ cv.id }}"{% if cluster.cv_version_id == cv.id %} selected{% endif %}>{{ cv.label }}</option>
+          {% endfor %}
+        </select>
+        {% if not cvs %}<small><a href="/profile/cvs">Upload your CV</a> first to choose one here.</small>{% endif %}
+      </label>
+      <label>Cover note template
+        <textarea name="cover_note_template" rows="12">{{ cluster.cover_note_template }}</textarea>
+        <small><code>{company}</code>, <code>{role}</code> and <code>{location}</code> are filled in for each job. Replace the [bracketed] parts with your own words.</small>
+      </label>
+    </div>
+  </section>
+
+  {% if preview %}
+  <section>
+    <h2>Preview for {{ rows[0][1].company or rows[0][1].title }}</h2>
+    <div class="card-block preview">{{ preview }}</div>
+  </section>
+  {% endif %}
+
+  <div class="button-row sticky-actions">
+    <button type="submit" class="secondary">Save draft</button>
+    <button type="submit" name="approve" value="1">Approve {{ rows | length }} job{{ "s" if rows | length != 1 }}</button>
+  </div>
+</form>
+
+<form method="post" action="/clusters/{{ cluster.id }}/delete" class="danger-zone">
+  {{ csrf_field(request) }}
+  <button type="submit" class="secondary outline">Delete this batch</button>
+  <small>The jobs stay saved.</small>
+</form>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ cluster.name }} · Applying{% endblock %}
+{% block content %}
+<p><a href="/applications" class="back">‹ Applications</a></p>
+<h1 class="tight">{{ cluster.name }}</h1>
+<p class="subtitle">{{ done_count }} of {{ rows | length }} done{% if applied_count %} · {{ applied_count }} applied{% endif %}</p>
+<progress value="{{ done_count }}" max="{{ rows | length }}"></progress>
+
+{% if current %}
+{% set link, job = current %}
+<article class="queue-card">
+  <header>
+    <span class="job-title">{{ job.title }}</span>
+    <small>{{ job.company }}{% if job.location %} · {{ job.location }}{% endif %}</small>
+  </header>
+
+  <ol class="steps">
+    <li>
+      <span>Copy your cover note{% if cv %} and have <strong>{{ cv.label }}</strong> ready{% endif %}.</span>
+      {% if app and app.cover_note %}
+      <textarea id="note-{{ job.id }}" rows="8" readonly>{{ app.cover_note }}</textarea>
+      <button type="button" class="secondary" data-copy="#note-{{ job.id }}">Copy cover note</button>
+      {% else %}
+      <small>No cover note in this batch.</small>
+      {% endif %}
+    </li>
+    <li>
+      <span>Open the advert and apply there.</span>
+      {% if job.url %}<a href="{{ job.url }}" target="_blank" rel="noopener noreferrer" role="button" class="wide">Open advert ↗</a>{% endif %}
+    </li>
+    <li><span>Come back and tell the hub how it went.</span></li>
+  </ol>
+
+  <footer class="button-row">
+    <form method="post" action="/clusters/{{ cluster.id }}/queue/{{ job.id }}">
+      {{ csrf_field(request) }}
+      <input type="hidden" name="outcome" value="applied">
+      <button type="submit">I've applied</button>
+    </form>
+    <form method="post" action="/clusters/{{ cluster.id }}/queue/{{ job.id }}">
+      {{ csrf_field(request) }}
+      <input type="hidden" name="outcome" value="skipped">
+      <button type="submit" class="secondary outline">Skip this one</button>
+    </form>
+  </footer>
+</article>
+{% else %}
+<article class="empty">
+  <p><strong>Batch finished.</strong></p>
+  <p>You applied for {{ applied_count }} job{{ "s" if applied_count != 1 }}. That's real progress. Replies will show on the Applications tab.</p>
+  <a href="/applications" role="button">See applications</a>
+</article>
+{% endif %}
+
+<section>
+  <h2>In this batch</h2>
+  <ul class="rows">
+    {% for link, job in rows %}
+    <li>
+      <span><strong>{{ job.title }}</strong><small>{{ job.company }}</small></span>
+      <span class="status status-{{ 'applied' if link.queue_state == 'applied' else ('closed' if link.queue_state == 'skipped' else 'found') }}">
+        {{ {"applied": "Applied", "skipped": "Skipped", "waiting": "To do"}[link.queue_state] }}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

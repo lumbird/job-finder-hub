@@ -35,11 +35,6 @@ def home(user: User = Depends(require_user)):
     return _see_other("/jobs")
 
 
-@router.get("/applications")
-def applications(request: Request, user: User = Depends(require_user)):
-    return templates.TemplateResponse(request, "pages/applications.html", {"tab": "applications"})
-
-
 @router.get("/reporting")
 def reporting(request: Request, user: User = Depends(require_user)):
     return templates.TemplateResponse(request, "pages/reporting.html", {"tab": "reporting"})

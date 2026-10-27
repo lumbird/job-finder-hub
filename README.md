@@ -6,7 +6,7 @@ FastAPI + Jinja2/HTMX + SQLite, built to run on a Raspberry Pi and reached priva
 
 ## Status
 
-**Phases 1 (skeleton and login) and 2 (jobs) done, running without Docker for now.** See the roadmap for what is next.
+**Phases 1 to 3 (login, jobs, applications and batches) done, running without Docker for now.** See the roadmap for what is next.
 
 - First-run setup code (printed to the logs) creates the single login
 - Passkey sign-in (fingerprint / screen lock), password fallback with optional authenticator codes

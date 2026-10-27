@@ -18,6 +18,57 @@
     if (btn) btn.setAttribute("aria-busy", "true");
   });
 
+  // ---------- copy buttons ----------
+
+  let toastTimer;
+  const toast = (msg) => {
+    let el = document.querySelector(".toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "toast";
+      el.setAttribute("role", "status");
+      document.body.append(el);
+    }
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (el.hidden = true), 1800);
+  };
+
+  // The Clipboard API needs HTTPS; over plain HTTP on the home network fall back to execCommand.
+  const copyText = async (text, source) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+    const field = source && "select" in source ? source : Object.assign(document.createElement("textarea"), { value: text });
+    if (field !== source) {
+      field.setAttribute("readonly", "");
+      field.style.position = "fixed";
+      field.style.opacity = "0";
+      document.body.append(field);
+    }
+    field.select();
+    field.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    if (field !== source) field.remove();
+    window.getSelection()?.removeAllRanges();
+    return ok;
+  };
+
+  document.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-copy]");
+    if (!btn) return;
+    const source = document.querySelector(btn.dataset.copy);
+    if (!source) return;
+    const text = "value" in source ? source.value : source.textContent;
+    try {
+      toast((await copyText(text, source)) ? "Copied" : "Couldn't copy. Select the text and copy it.");
+    } catch {
+      toast("Couldn't copy. Select the text and copy it.");
+    }
+  });
+
   // ---------- passkeys ----------
 
   const b64urlToBuf = (s) => {

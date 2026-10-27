@@ -37,14 +37,19 @@
   <p class="sources"><small>On {{ sources | map(attribute=0) | unique | join(" · ") }}</small></p>
   {% endif %}
   <footer class="job-actions">
-    {% if job.state == "saved" %}
+    {% set application = applications.get(job.id) if applications else none %}
+    {% if application %}
+      <a href="/applications/{{ application.id }}" role="button">Application · {{ application.status | title }}</a>
+    {% elif job.state == "saved" %}
+      <form method="post" action="/jobs/{{ job.id }}/apply">
+        {{ csrf_field(request) }}
+        <button type="submit">Apply</button>
+      </form>
       {{ state_button(job, "new", "Unsave") }}
-    {% elif job.state in ("new", "dismissed") %}
+    {% elif job.state == "new" %}
       {{ state_button(job, "saved", "Save", "") }}
-    {% endif %}
-    {% if job.state == "new" %}
       {{ state_button(job, "dismissed", "Dismiss") }}
-    {% elif job.state in ("dismissed", "closed") %}
+    {% else %}
       {{ state_button(job, "new", "Restore") }}
     {% endif %}
     {% if job.url %}

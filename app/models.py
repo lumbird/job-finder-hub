@@ -102,3 +102,51 @@ class JobSource(SQLModel, table=True):
     service_id: int = Field(foreign_key="service.id")
     external_id: str
     url: str = ""
+
+
+# ---------- Applications and clusters (phase 3) ----------
+
+
+class CvVersion(SQLModel, table=True):
+    __tablename__ = "cv_version"
+
+    id: int | None = Field(default=None, primary_key=True)
+    label: str
+    file_path: str  # relative to data/cvs
+    original_name: str
+    is_default: bool = False
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class Cluster(SQLModel, table=True):
+    """Similar saved jobs applied for together with one cover note template and one CV."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    profile: str = ""  # criteria profile it was built from
+    cover_note_template: str = ""
+    cv_version_id: int | None = Field(default=None, foreign_key="cv_version.id")
+    state: str = "draft"  # draft, approved, done
+    created_at: datetime = Field(default_factory=utcnow)
+
+
+class ClusterJob(SQLModel, table=True):
+    __tablename__ = "cluster_job"
+
+    cluster_id: int = Field(foreign_key="cluster.id", primary_key=True)
+    job_id: int = Field(foreign_key="job.id", primary_key=True)
+    queue_state: str = "waiting"  # waiting, applied, skipped (the submit queue)
+
+
+class Application(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    job_id: int = Field(foreign_key="job.id", unique=True)
+    cluster_id: int | None = Field(default=None, foreign_key="cluster.id", index=True)
+    cv_version_id: int | None = Field(default=None, foreign_key="cv_version.id")
+    cover_note: str = ""
+    status: str = Field(default="found", index=True)  # found, applied, replied, interview, offer, closed
+    applied_at: datetime | None = None
+    follow_up_on: date | None = None
+    notes: str = ""
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)

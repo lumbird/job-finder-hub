@@ -11,7 +11,7 @@ from sqlmodel import Session, select
 
 from app.deps import get_db, require_user, safe_next, templates
 from app.matching import STRONG_MATCH
-from app.models import Job, JobSource, Service, User
+from app.models import Application, Job, JobSource, Service, User
 from app.security.csrf import verify_csrf
 from app.services import PLUGINS
 
@@ -49,8 +49,21 @@ def _sources(db: Session, jobs: list[Job]) -> dict[int, list[tuple[str, str]]]:
     return out
 
 
+def _applications(db: Session, jobs: list[Job]) -> dict[int, Application]:
+    if not jobs:
+        return {}
+    rows = db.exec(select(Application).where(Application.job_id.in_([j.id for j in jobs]))).all()  # type: ignore[union-attr]
+    return {a.job_id: a for a in rows}
+
+
 def card_context(db: Session, job: Job) -> dict:
-    return {"job": job, "sources": _sources(db, [job]).get(job.id, []), "today": date.today(), **_helpers()}
+    return {
+        "job": job,
+        "sources": _sources(db, [job]).get(job.id, []),
+        "applications": _applications(db, [job]),
+        "today": date.today(),
+        **_helpers(),
+    }
 
 
 def _helpers() -> dict:
@@ -90,6 +103,7 @@ def jobs_page(
             "tab": "jobs",
             "jobs": jobs,
             "sources": _sources(db, jobs),
+            "applications": _applications(db, jobs),
             "view": view,
             "views": VIEWS,
             "sort": sort,

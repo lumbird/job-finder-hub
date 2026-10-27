@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}CV versions · Job Finder Hub{% endblock %}
+{% block content %}
+<p><a href="/profile" class="back">‹ Profile</a></p>
+<h1>CV versions</h1>
+<p class="subtitle">Keep each version you send, so you always know which CV went to which job.</p>
+
+{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+{% if done == "added" %}<p class="notice ok" role="status">CV added.</p>{% elif done == "deleted" %}<p class="notice ok" role="status">CV deleted.</p>{% endif %}
+
+{% if cvs %}
+<section>
+  <h2>Your CVs</h2>
+  <ul class="rows">
+    {% for cv in cvs %}
+    <li>
+      <span>
+        <strong><a href="/profile/cvs/{{ cv.id }}/file">{{ cv.label }}</a></strong>
+        <small>{{ cv.original_name }} · added {{ cv.created_at | short_date }}{% if used.get(cv.id) %} · sent {{ used[cv.id] }} time{{ "s" if used[cv.id] != 1 }}{% endif %}</small>
+      </span>
+      <span class="row-actions">
+        {% if cv.is_default %}
+        <span class="status status-offer">Default</span>
+        {% else %}
+        <form method="post" action="/profile/cvs/{{ cv.id }}/default">
+          {{ csrf_field(request) }}
+          <button type="submit" class="secondary outline">Make default</button>
+        </form>
+        {% if not used.get(cv.id) %}
+        <form method="post" action="/profile/cvs/{{ cv.id }}/delete">
+          {{ csrf_field(request) }}
+          <button type="submit" class="secondary outline" aria-label="Delete {{ cv.label }}">Delete</button>
+        </form>
+        {% endif %}
+        {% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section>
+  <h2>Add a version</h2>
+  <form method="post" action="/profile/cvs" enctype="multipart/form-data" class="card-block" data-busy>
+    {{ csrf_field(request) }}
+    <label>Name it
+      <input name="label" maxlength="60" placeholder="e.g. Software CV, Oct 2026">
+    </label>
+    <label>File
+      <input type="file" name="file" required accept=".pdf,.docx,.doc,.odt,.txt">
+      <small>PDF, Word, OpenDocument or text, up to 5 MB. Stored only on the Pi.</small>
+    </label>
+    <button type="submit" class="wide">Upload</button>
+  </form>
+</section>
+{% endblock %}

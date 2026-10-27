@@ -18,7 +18,7 @@ from app.criteria import CriteriaFile
 from app.db import make_engine, run_migrations
 from app.deps import NeedsLogin, templates, user_exists
 from app.ingest import Fetcher
-from app.routes import auth, jobs, pages, settings as settings_routes
+from app.routes import applications, auth, jobs, pages, settings as settings_routes
 from app.scheduler import start_scheduler
 from app.security.crypto import SecretBox
 from app.security.csrf import CSRF_COOKIE
@@ -119,6 +119,7 @@ def create_app(
     app.include_router(auth.router)
     app.include_router(pages.router)
     app.include_router(jobs.router)
+    app.include_router(applications.router)
     app.include_router(settings_routes.router)
     return app
 

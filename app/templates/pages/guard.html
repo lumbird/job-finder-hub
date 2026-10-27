@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}Applied before? · Job Finder Hub{% endblock %}
+{% block content %}
+<p><a href="/jobs/{{ job.id }}" class="back">‹ Back to the job</a></p>
+<h1>Applied before?</h1>
+<p>Before you start on <strong>{{ job.title }}</strong> at {{ job.company or "this employer" }}:</p>
+
+{% for w in warnings %}
+<p class="notice warn" role="alert">
+  {{ w.reason }}
+  <a href="/applications/{{ w.application.id }}">See that application</a>
+</p>
+{% endfor %}
+
+<div class="button-row">
+  <form method="post" action="/jobs/{{ job.id }}/apply">
+    {{ csrf_field(request) }}
+    <input type="hidden" name="force" value="1">
+    <button type="submit">It's different, apply anyway</button>
+  </form>
+  <a href="/jobs/{{ job.id }}" role="button" class="secondary outline">Leave it</a>
+</div>
+{% endblock %}

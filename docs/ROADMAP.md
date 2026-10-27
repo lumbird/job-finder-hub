@@ -8,12 +8,12 @@
 |---|---|
 | 1. Skeleton and login | **Done**, running from a venv. Docker deferred. |
 | 2. Jobs | **Done.** Waiting for real Reed/Adzuna keys to prove it against the live APIs. |
-| 3. Applications and clusters | Next |
-| 4. Emails | Not started |
+| 3. Applications and clusters | **Done** (27 Oct). Submit queue opens adverts; no auto-submit. |
+| 4. Emails | Next. Needs Tailscale/HTTPS for OAuth. |
 | 5. Reporting | Not started |
 | 6. Notify and extras | Not started |
 
-83 tests pass (`.venv/bin/pytest`).
+104 tests pass (`.venv/bin/pytest`).
 
 ## The live instance
 
@@ -48,9 +48,12 @@
 
 1. Look at the screenshots and fix the styling.
 2. Connect the real keys, run "Check now" on Jobs, and fix anything the live APIs return differently from the samples. Record real responses into `tests/fixtures/`, with keys and personal data removed.
-3. Start phase 3.
+3. Try phase 3 with real saved jobs (Apply, batches, CV upload) and tweak from feedback.
+4. Phase 4 needs Tailscale first (OAuth needs HTTPS).
 
-## Phase 3: Applications and clusters
+## Phase 3: Applications and clusters (done)
+
+Built as planned below. Batches group saved jobs by their best-fit profile, and approving one makes an Application (Found) for each job. The submit queue then walks through copy note → open advert → "I've applied" or skip. The guard warns on the same company plus a similar title within 6 months, and on agency reposts (agency-like employer name, near-identical title, same town).
 
 **Data (migration 0003):** `cv_version`, `cluster`, `cluster_job`, `application`, as in the spec's data model.
 

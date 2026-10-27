@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ job.title }} · Application{% endblock %}
+{% block content %}
+<p><a href="/applications" class="back">‹ Applications</a></p>
+<h1 class="tight">{{ job.title }}</h1>
+<p class="subtitle">
+  {{ job.company or "Unknown employer" }}{% if job.location %} · {{ job.location }}{% endif %}
+  <span class="status status-{{ app.status }}">{{ statuses[app.status] }}</span>
+</p>
+
+{% if done %}<p class="notice ok" role="status">{{ done }}</p>{% endif %}
+
+<div class="button-row">
+  {% if job.url %}<a href="{{ job.url }}" target="_blank" rel="noopener noreferrer" role="button">Open advert ↗</a>{% endif %}
+  {% if app.status == "found" %}
+  <form method="post" action="/applications/{{ app.id }}/applied">
+    {{ csrf_field(request) }}
+    <button type="submit" class="secondary">I've applied</button>
+  </form>
+  {% endif %}
+  <a href="/jobs/{{ job.id }}" role="button" class="secondary outline">Job details</a>
+</div>
+{% if cluster %}<p><small>Part of the <a href="/clusters/{{ cluster.id }}">{{ cluster.name }}</a> batch.</small></p>{% endif %}
+
+<form method="post" action="/applications/{{ app.id }}" class="stack">
+  {{ csrf_field(request) }}
+
+  <section>
+    <h2>Status</h2>
+    <div class="card-block">
+      <label>Where it's at
+        <select name="status">
+          {% for key, label in statuses.items() %}
+          <option value="{{ key }}"{% if app.status == key %} selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% if app.applied_at %}<p><small>Applied {{ app.applied_at.astimezone().strftime("%-d %b %Y") }}</small></p>{% endif %}
+      <label>Follow up on
+        <input type="date" name="follow_up_on" value="{{ app.follow_up_on.isoformat() if app.follow_up_on else '' }}">
+        <small>It'll show at the top of Applications on the day.</small>
+      </label>
+    </div>
+  </section>
+
+  <section>
+    <h2>What you sent</h2>
+    <div class="card-block">
+      <label>CV version
+        <select name="cv_version_id">
+          <option value="">None chosen</option>
+          {% for cv in cvs %}
+          <option value="{{ cv.id }}"{% if app.cv_version_id == cv.id %} selected{% endif %}>{{ cv.label }}</option>
+          {% endfor %}
+        </select>
+        {% if not cvs %}<small><a href="/profile/cvs">Upload your CV</a> to keep track of which version went where.</small>{% endif %}
+      </label>
+      <label>Cover note
+        <textarea name="cover_note" rows="10" id="cover-note" placeholder="Write or paste the cover note you'll send.">{{ app.cover_note }}</textarea>
+      </label>
+      {% if app.cover_note %}
+      <button type="button" class="secondary outline" data-copy="#cover-note">Copy cover note</button>
+      {% endif %}
+    </div>
+  </section>
+
+  <section>
+    <h2>Notes</h2>
+    <div class="card-block">
+      <label class="visually-hidden" for="notes">Notes</label>
+      <textarea name="notes" id="notes" rows="4" placeholder="Who you spoke to, what they said, anything to remember.">{{ app.notes }}</textarea>
+    </div>
+  </section>
+
+  <button type="submit" class="wide">Save</button>
+</form>
+{% endblock %}

@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q --show-capture=no"
 filterwarnings = ["ignore::DeprecationWarning:webauthn.*"]
 
 [tool.ruff]
