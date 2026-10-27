@@ -4,6 +4,8 @@
 // @version      0.2.0
 // @description  Bulk delete, bulk add (from CSV files, checked in a table first) and CSV export on the Universal Credit work search pages. Runs only when you click its buttons.
 // @match        https://www.universal-credit.service.gov.uk/work-search*
+// @author       LumBird
+// @license      MIT
 // @grant        none
 // ==/UserScript==
 
