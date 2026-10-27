@@ -1,9 +1,96 @@
 {% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
 {% block title %}Reporting · Job Finder Hub{% endblock %}
 {% block content %}
-<h1>Reporting</h1>
-<article class="empty">
-  <p><strong>Nothing to report.</strong></p>
-  <p>Universal Credit entries, ready to copy and paste, arrive in phase 5. Nothing is ever reported unless you choose it.</p>
-</article>
+<div class="page-head">
+  <h1>Reporting</h1>
+  <a href="/reporting/week" role="button" class="secondary outline">This week</a>
+</div>
+<p class="subtitle">Universal Credit. Only what you choose is here. Copy each entry into your journal, then mark it reported.</p>
+
+{% if done %}<p class="notice ok" role="status">{{ done }}</p>{% endif %}
+
+<section>
+  <h2>Ready to paste ({{ ready | length }})</h2>
+  {% if ready %}
+    {% if ready | length > 1 %}
+    <div class="button-row copy-all">
+      <textarea id="all-entries" class="visually-hidden" readonly tabindex="-1" aria-hidden="true">{{ all_text }}</textarea>
+      <button type="button" class="secondary" data-copy="#all-entries">Copy all</button>
+      <form method="post" action="/reporting/all-reported">
+        {{ csrf_field(request) }}
+        <button type="submit" class="secondary outline">Mark all reported</button>
+      </form>
+    </div>
+    {% endif %}
+    {% for e in ready %}
+    <article class="entry">
+      <header>
+        <span class="entry-type">{{ types.get(e.activity_type, "Other") }}</span>
+        <small>{{ e.activity_date | short_date }}</small>
+      </header>
+      <form method="post" action="/reporting/{{ e.id }}/text">
+        {{ csrf_field(request) }}
+        <label class="visually-hidden" for="entry-{{ e.id }}">Entry text</label>
+        <textarea id="entry-{{ e.id }}" name="text" rows="3">{{ e.text }}</textarea>
+        <div class="entry-actions">
+          <button type="button" data-copy="#entry-{{ e.id }}">Copy</button>
+          <button type="submit" class="secondary outline">Save edit</button>
+        </div>
+      </form>
+      <div class="entry-actions">
+        <form method="post" action="/reporting/{{ e.id }}/reported">
+          {{ csrf_field(request) }}
+          <button type="submit" class="secondary">Mark reported</button>
+        </form>
+        <form method="post" action="/reporting/{{ e.id }}/remove">
+          {{ csrf_field(request) }}
+          <button type="submit" class="secondary outline">Don't report</button>
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+  {% else %}
+  <article class="empty">
+    <p><strong>Nothing waiting.</strong></p>
+    <p>After you apply for a job, use Report on the application. Or log other work search below.</p>
+  </article>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Log other work search</h2>
+  <form method="post" action="/reporting/log" class="card-block">
+    {{ csrf_field(request) }}
+    <label>What you did
+      <select name="activity_type" required>
+        {% for key in other_types %}<option value="{{ key }}">{{ types[key] }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>When
+      <input type="date" name="when" value="{{ today.isoformat() }}" max="{{ today.isoformat() }}">
+    </label>
+    <label>Details
+      <input name="detail" maxlength="500" placeholder="e.g. Finished the Python basics course">
+    </label>
+    <button type="submit" class="wide">Add to Ready to paste</button>
+  </form>
+</section>
+
+{% if reported %}
+<section>
+  <h2>Recently reported</h2>
+  <ul class="rows">
+    {% for e in reported %}
+    <li>
+      <span><strong>{{ types.get(e.activity_type, "Other") }}</strong><small>{{ e.text }}</small></span>
+      <form method="post" action="/reporting/{{ e.id }}/undo">
+        {{ csrf_field(request) }}
+        <button type="submit" class="secondary outline" aria-label="Undo reported: {{ e.text }}">Undo</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
 {% endblock %}

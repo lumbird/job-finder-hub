@@ -42,7 +42,15 @@ def services_page(request: Request, user: User = Depends(require_user), db: Sess
     rows = {s.name: s for s in db.exec(select(Service)).all()}
     groups: dict[str, list[dict]] = {k: [] for k in KIND_LABELS}
     for key, plugin in PLUGINS.items():
-        groups[plugin.kind].append({"key": key, "label": plugin.label, "summary": plugin.summary, "row": rows.get(key)})
+        groups[plugin.kind].append(
+            {
+                "key": key,
+                "label": plugin.label,
+                "summary": plugin.summary,
+                "row": rows.get(key),
+                "no_keys": not plugin.credential_fields,
+            }
+        )
     for planned in PLANNED:
         groups[planned.kind].append(
             {"key": planned.key, "label": planned.label, "summary": planned.summary, "phase": planned.phase}

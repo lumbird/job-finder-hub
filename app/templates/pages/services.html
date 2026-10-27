@@ -14,6 +14,11 @@
       <div class="soon">
         <span><strong>{{ item.label }}</strong><small>{{ item.summary }} Coming in phase {{ item.phase }}.</small></span>
       </div>
+      {% elif item.no_keys %}
+      <a href="/reporting">
+        <span><strong>{{ item.label }}</strong><small>{{ item.summary }}</small></span>
+        <span class="health health-ok">Ready</span>
+      </a>
       {% else %}
       {% set health = item.row.health if item.row and item.row.credentials else "not_connected" %}
       <a href="/profile/services/{{ item.key }}">

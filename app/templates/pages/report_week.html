@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Week summary · Reporting{% endblock %}
+{% block content %}
+<p><a href="/reporting" class="back">‹ Reporting</a></p>
+<h1 class="tight">Week summary</h1>
+<p class="subtitle">{{ monday.strftime("%a %-d %b") }} to {{ sunday.strftime("%a %-d %b %Y") }}</p>
+
+<nav class="button-row week-nav" aria-label="Weeks">
+  <a href="/reporting/week?start={{ prev }}" role="button" class="secondary outline">‹ Earlier</a>
+  {% if next %}<a href="/reporting/week?start={{ next }}" role="button" class="secondary outline">Later ›</a>{% endif %}
+</nav>
+
+{% if counts %}
+<section>
+  <h2>At a glance</h2>
+  <ul class="rows">
+    {% for label, n in counts.items() %}
+    <li><span>{{ label }}</span><strong>{{ n }}</strong></li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section>
+  <h2>For your work coach</h2>
+  <div class="card-block">
+    <label class="visually-hidden" for="week-text">Summary text</label>
+    <textarea id="week-text" rows="{{ [entries | length + 3, 6] | max }}" readonly>{{ text }}</textarea>
+    <button type="button" class="wide" data-copy="#week-text">Copy summary</button>
+  </div>
+  <p><small>Includes everything logged this week, whether or not it's been marked reported.</small></p>
+</section>
+{% endblock %}

@@ -35,11 +35,6 @@ def home(user: User = Depends(require_user)):
     return _see_other("/jobs")
 
 
-@router.get("/reporting")
-def reporting(request: Request, user: User = Depends(require_user)):
-    return templates.TemplateResponse(request, "pages/reporting.html", {"tab": "reporting"})
-
-
 @router.get("/profile")
 def profile(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     rows = db.exec(select(Service).where(Service.credentials.is_not(None))).all()  # type: ignore[union-attr]

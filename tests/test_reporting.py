@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from sqlmodel import Session, select
@@ -123,3 +123,93 @@ def test_weekly_summary_covers_monday_to_sunday(db):
     text, entries = reporting.weekly_summary(db, "universal_credit", reporting.week_start(date(2026, 10, 29)))
     assert [e.activity_date for e in entries] == [MON, date(2026, 11, 1)]
     assert "(2 activities)" in text
+
+
+# ---------- Reporting tab ----------
+
+
+@pytest.fixture
+def hub(tmp_path, sleeps):
+    from fastapi.testclient import TestClient
+
+    from tests.conftest import do_setup
+
+    app = create_app(make_settings(tmp_path), sleep=sleeps, scheduler=False)
+    client = TestClient(app, follow_redirects=False)
+    assert do_setup(client).status_code == 303
+    return client
+
+
+def _post(client, path, **data):
+    from tests.conftest import csrf
+
+    return client.post(path, data={"csrf_token": csrf(client, "/reporting"), **data})
+
+
+def _entries(client) -> list[ReportEntry]:
+    with Session(client.app.state.engine) as db:
+        return list(db.exec(select(ReportEntry).order_by(ReportEntry.id)).all())
+
+
+def test_empty_reporting_tab(hub):
+    html = hub.get("/reporting").text
+    assert "Nothing waiting" in html and "Log other work search" in html
+
+
+def test_log_copy_edit_and_mark_reported(hub):
+    r = _post(hub, "/reporting/log", activity_type="course", when="2026-10-26", detail="Python basics")
+    assert r.headers["location"] == "/reporting?done=logged"
+    html = hub.get("/reporting").text
+    assert "Mon 26 Oct 2026: Training or course: Python basics." in html
+    assert 'data-copy="#entry-1"' in html
+
+    _post(hub, "/reporting/1/text", text="Mon 26 Oct 2026: Did the Python basics course (4 hours).")
+    assert "(4 hours)" in _entries(hub)[0].text
+
+    _post(hub, "/reporting/1/reported")
+    html = hub.get("/reporting").text
+    assert "Recently reported" in html and "Nothing waiting" in html
+
+    _post(hub, "/reporting/1/undo")
+    assert _entries(hub)[0].state == "ready"
+
+
+def test_copy_all_and_mark_all(hub):
+    _post(hub, "/reporting/log", activity_type="cv_update", detail="new projects section")
+    _post(hub, "/reporting/log", activity_type="job_search", detail="Reed and Indeed")
+    html = hub.get("/reporting").text
+    assert "Copy all" in html and 'id="all-entries"' in html
+    _post(hub, "/reporting/all-reported")
+    assert {e.state for e in _entries(hub)} == {"reported"}
+
+
+def test_dont_report_removes_only_ready_entries(hub):
+    _post(hub, "/reporting/log", activity_type="other", detail="jobs fair")
+    _post(hub, "/reporting/log", activity_type="other", detail="careers talk")
+    _post(hub, "/reporting/2/reported")
+    _post(hub, "/reporting/1/remove")
+    _post(hub, "/reporting/2/remove")  # reported: kept until undone
+    assert [e.id for e in _entries(hub)] == [2]
+
+
+def test_log_rejects_bad_input(hub):
+    assert _post(hub, "/reporting/log", activity_type="applied").status_code == 400
+    assert _post(hub, "/reporting/log", activity_type="course", when="not-a-date").status_code == 400
+
+
+def test_week_page(hub):
+    from app.reporting import week_start
+
+    _post(hub, "/reporting/log", activity_type="job_search", detail="searched")
+    html = hub.get("/reporting/week").text
+    assert "Week summary" in html and "(1 activity)" in html and "Copy summary" in html
+    assert "Later" not in html  # can't page into the future
+    last_week = week_start(date.today()) - timedelta(days=7)
+    earlier = hub.get(f"/reporting/week?start={last_week.isoformat()}").text
+    assert "Later" in earlier and "no activities logged" in earlier
+    assert "no activities logged" in hub.get("/reporting/week?start=2020-01-08").text
+
+
+def test_services_page_shows_universal_credit_ready(hub):
+    html = hub.get("/profile/services").text
+    assert '<a href="/reporting">' in html and "Ready" in html
