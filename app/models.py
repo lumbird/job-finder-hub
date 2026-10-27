@@ -150,3 +150,23 @@ class Application(SQLModel, table=True):
     notes: str = ""
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+# ---------- Reporting (phase 5) ----------
+
+
+class ReportEntry(SQLModel, table=True):
+    """One work-search activity the candidate chose to report. Nothing is reported without a tap."""
+
+    __tablename__ = "report_entry"
+
+    id: int | None = Field(default=None, primary_key=True)
+    reporting_service_id: int = Field(foreign_key="service.id", index=True)
+    application_id: int | None = Field(default=None, foreign_key="application.id", index=True)
+    activity_type: str  # applied, interview, follow_up, cv_update, course, employer_research, interview_prep, job_search, other
+    activity_date: date
+    text: str
+    state: str = Field(default="ready", index=True)  # ready, reported
+    created_at: datetime = Field(default_factory=utcnow)
+    reported_at: datetime | None = None
+    evidence_email_id: int | None = None  # becomes a foreign key when emails arrive in phase 4
