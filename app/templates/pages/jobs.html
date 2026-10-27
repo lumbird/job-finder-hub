@@ -1,9 +1,77 @@
 {% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
 {% block title %}Jobs · Job Finder Hub{% endblock %}
 {% block content %}
-<h1>Jobs</h1>
+<div class="page-head">
+  <h1>Jobs</h1>
+  {% if connected %}
+  <form method="post" action="/jobs/fetch" data-busy>
+    {{ csrf_field(request) }}
+    <button type="submit" class="secondary outline"{% if fetching %} aria-busy="true" disabled{% endif %}>
+      {{ "Checking…" if fetching else "Check now" }}
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+{% if fetch_message %}<p class="notice ok" role="status">{{ fetch_message }}</p>{% endif %}
+
+{% if not connected %}
 <article class="empty">
-  <p><strong>No jobs yet.</strong></p>
-  <p>Job sources (Reed and Adzuna first) arrive in phase 2. Matches will appear here, scored against your criteria.</p>
+  <p><strong>Connect a job site to start.</strong></p>
+  <p>Reed and Adzuna both give free API keys. Add one and the hub checks for matching jobs every hour.</p>
+  <a href="/profile/services" role="button">Connect job sites</a>
+  <p><small><a href="/profile/criteria">Set your criteria</a> first if you like: roles, location and salary.</small></p>
 </article>
+{% else %}
+
+<nav class="chips" aria-label="Job lists">
+  {% for key, label in views.items() %}
+    {% set n = counts.get("new" if key == "today" else key, 0) %}
+    {% if key in ("today", "new", "saved") or n %}
+    <a href="/jobs?view={{ key }}{% if key != 'today' and sort != 'score' %}&sort={{ sort }}{% endif %}"{% if view == key %} aria-current="page"{% endif %}>
+      {{ label }}{% if key != "today" %} <span class="count">{{ n }}</span>{% endif %}
+    </a>
+    {% endif %}
+  {% endfor %}
+</nav>
+
+{% if view != "today" and jobs %}
+<form method="get" action="/jobs" class="sort" data-autosubmit>
+  <input type="hidden" name="view" value="{{ view }}">
+  <label>Sort
+    <select name="sort">
+      {% for key, label in sorts.items() %}
+      <option value="{{ key }}"{% if sort == key %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <noscript><button type="submit" class="secondary">Sort</button></noscript>
+</form>
+{% endif %}
+
+{% if view == "today" %}
+<p class="lede">{% if jobs %}Your {{ jobs | length }} best new match{{ "es" if jobs | length != 1 }}. Save the ones worth applying for and dismiss the rest.{% endif %}</p>
+{% endif %}
+
+{% for job in jobs %}
+  {% with sources = sources.get(job.id, []) %}{% include "_job_card.html" %}{% endwith %}
+{% else %}
+<article class="empty">
+  {% if view == "today" or view == "new" %}
+  <p><strong>Nothing new right now.</strong></p>
+  <p>The hub checks every {{ criteria.fetch_every_minutes }} minutes. New matches will show up here.</p>
+  {% elif view == "saved" %}
+  <p><strong>No saved jobs.</strong></p>
+  <p>Tap Save on a job you'd like to apply for.</p>
+  {% else %}
+  <p>Nothing here.</p>
+  {% endif %}
+</article>
+{% endfor %}
+
+{% if view == "today" and waiting %}
+<p class="calm">That's today's {{ jobs | length }}. {{ waiting }} more {{ "is" if waiting == 1 else "are" }} waiting in <a href="/jobs?view=new">All new</a> whenever you want {{ "it" if waiting == 1 else "them" }}.</p>
+{% endif %}
+{% endif %}
 {% endblock %}

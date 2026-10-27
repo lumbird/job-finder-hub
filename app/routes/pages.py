@@ -9,7 +9,7 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from app.deps import THEME_COOKIE, THEMES, get_db, require_user, safe_next, templates
-from app.models import PasskeyCredential, User
+from app.models import PasskeyCredential, Service, User
 from app.security.csrf import verify_csrf
 from app.security.passwords import hash_password, password_problem, verify_password
 from app.security.sessions import other_session_count
@@ -35,11 +35,6 @@ def home(user: User = Depends(require_user)):
     return _see_other("/jobs")
 
 
-@router.get("/jobs")
-def jobs(request: Request, user: User = Depends(require_user)):
-    return templates.TemplateResponse(request, "pages/jobs.html", {"tab": "jobs"})
-
-
 @router.get("/applications")
 def applications(request: Request, user: User = Depends(require_user)):
     return templates.TemplateResponse(request, "pages/applications.html", {"tab": "applications"})
@@ -51,8 +46,16 @@ def reporting(request: Request, user: User = Depends(require_user)):
 
 
 @router.get("/profile")
-def profile(request: Request, user: User = Depends(require_user)):
-    return templates.TemplateResponse(request, "pages/profile.html", {"tab": "profile"})
+def profile(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    rows = db.exec(select(Service).where(Service.credentials.is_not(None))).all()  # type: ignore[union-attr]
+    broken = [r for r in rows if r.health not in ("ok", "unchecked")]
+    if not rows:
+        summary = "Nothing connected yet"
+    elif broken:
+        summary = f"{len(broken)} need{'s' if len(broken) == 1 else ''} attention"
+    else:
+        summary = f"{len(rows)} connected, all working"
+    return templates.TemplateResponse(request, "pages/profile.html", {"tab": "profile", "services_summary": summary})
 
 
 # ---------- security ----------

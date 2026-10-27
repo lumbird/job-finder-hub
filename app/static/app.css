@@ -134,3 +134,80 @@ button, [role="button"], input:not([type="checkbox"], [type="radio"], [type="hid
 @media (min-width: 768px) {
   main.container { max-width: 720px; }
 }
+
+/* ---------- Phase 2: jobs and services ---------- */
+
+:root {
+  --hub-good: #1e7a46;      /* white text on this: 5.4:1 */
+  --hub-bad: #b3261e;       /* white text on this: 6.6:1 */
+  --hub-warn: #8a5a00;      /* white text on this: 5.9:1 */
+  --hub-soon-text: #b3261e; /* on light background: 6.6:1 */
+}
+[data-theme="dark"] { --hub-soon-text: #ff9b91; }
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { --hub-soon-text: #ff9b91; }
+}
+
+.visually-hidden {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+.page-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; }
+.page-head h1 { margin: 0; }
+.page-head form, .page-head button { margin: 0; }
+.lede, .calm { color: var(--pico-muted-color); }
+.calm { text-align: center; margin: 1.5rem 0; }
+
+/* List chips: horizontal scroll on narrow screens rather than wrapping */
+.chips { display: flex; gap: .5rem; overflow-x: auto; margin-bottom: 1rem; padding-bottom: .25rem; scrollbar-width: none; }
+.chips a {
+  flex: none; display: inline-flex; align-items: center; gap: .35rem;
+  min-height: var(--hub-tap); padding: 0 1rem; border-radius: 999px;
+  border: 1px solid var(--pico-muted-border-color); color: inherit; text-decoration: none; white-space: nowrap;
+}
+.chips a[aria-current="page"] { background: var(--pico-primary-background); border-color: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+.chips .count { font-size: .8rem; opacity: .8; }
+
+.sort { margin-bottom: 1rem; }
+.sort label { display: flex; align-items: center; gap: .75rem; margin: 0; }
+.sort select { margin: 0; width: auto; flex: 1; }
+
+/* Job cards */
+.job { padding: 1rem; margin-bottom: 1rem; }
+.job header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem;
+  margin: -1rem -1rem .5rem; padding: 1rem 1rem .25rem; background: none; border: 0;
+}
+.job-title { font-weight: 600; font-size: 1.05rem; text-decoration: none; line-height: 1.3; }
+.job-meta { display: flex; flex-wrap: wrap; gap: .15rem .9rem; margin-bottom: .5rem; font-size: .9rem; color: var(--pico-muted-color); }
+.closing-soon { color: var(--hub-soon-text); font-weight: 600; }
+.reason { margin-bottom: .5rem; }
+.sources { margin-bottom: .75rem; }
+.job-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; background: none; border: 0; }
+.job-actions form { margin: 0; }
+.job-actions button, .job-actions [role="button"] { margin: 0; padding: .5rem 1rem; }
+.job-gone { display: flex; align-items: center; justify-content: space-between; gap: 1rem; color: var(--pico-muted-color); }
+.job-gone form, .job-gone button { margin: 0; }
+.description { white-space: pre-line; }
+
+.score {
+  flex: none; min-width: 2.5rem; padding: .2rem .5rem; border-radius: 999px; text-align: center;
+  font-weight: 700; font-size: .9rem; border: 1px solid var(--pico-muted-border-color);
+}
+.score.strong { background: var(--hub-good); border-color: var(--hub-good); color: #fff; }
+
+/* Service health badges */
+.health {
+  flex: none; display: inline-block; padding: .2rem .65rem; border-radius: 999px;
+  font-size: .8rem; font-weight: 600; white-space: nowrap;
+  border: 1px solid var(--pico-muted-border-color);
+}
+.health-ok { background: var(--hub-good); border-color: var(--hub-good); color: #fff; }
+.health-broken, .health-needs_login { background: var(--hub-bad); border-color: var(--hub-bad); color: #fff; }
+.health-rate_limited, .health-unchecked { background: var(--hub-warn); border-color: var(--hub-warn); color: #fff; }
+
+.button-row { display: flex; flex-wrap: wrap; gap: .5rem; }
+.button-row form, .button-row button { margin: 0; }
+
+textarea.code { font-family: var(--pico-font-family-monospace); font-size: .85rem; line-height: 1.45; }

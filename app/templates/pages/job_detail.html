@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }} · Job Finder Hub{% endblock %}
+{% block content %}
+<p><a href="/jobs" class="back">‹ Jobs</a></p>
+{% include "_job_card.html" %}
+
+<section>
+  <h2>Description</h2>
+  {% if job.description %}
+  <p class="description">{{ job.description }}</p>
+  <p><small>Boards often send only the start of the description. The full advert is on the board's site.</small></p>
+  {% else %}
+  <p>No description was given. Open the advert for details.</p>
+  {% endif %}
+</section>
+
+{% if sources %}
+<section>
+  <h2>Where it's listed</h2>
+  <ul class="rows">
+    {% for label, url in sources %}
+    <li>
+      <span>{{ label }}</span>
+      {% if url %}<a href="{{ url }}" target="_blank" rel="noopener noreferrer" role="button" class="secondary outline">Open ↗</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<p><small>First seen {{ job.first_seen_at | short_date }}{% if job.posted_at %}, posted {{ job.posted_at | short_date }}{% endif %}. Best fit: {{ job.profile or "none" }}.</small></p>
+{% endblock %}

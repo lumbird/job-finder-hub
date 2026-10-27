@@ -1,0 +1,55 @@
+{%- from "_macros.html" import csrf_field -%}
+{%- macro state_button(job, state, label, cls="secondary outline") -%}
+<form method="post" action="/jobs/{{ job.id }}/state" hx-post="/jobs/{{ job.id }}/state" hx-target="closest article" hx-swap="outerHTML">
+  {{ csrf_field(request) }}
+  <input type="hidden" name="next" value="{{ request.url.path }}{% if request.url.query %}?{{ request.url.query }}{% endif %}">
+  <button type="submit" name="state" value="{{ state }}" class="{{ cls }}">{{ label }}</button>
+</form>
+{%- endmacro -%}
+
+<article class="job" id="job-{{ job.id }}">
+{% if just_changed and job.state == "dismissed" %}
+  <div class="job-gone">
+    <span>Dismissed <strong>{{ job.title }}</strong>.</span>
+    {{ state_button(job, previous or "new", "Undo") }}
+  </div>
+{% else %}
+  <header>
+    <a href="/jobs/{{ job.id }}" class="job-title">{{ job.title }}</a>
+    <span class="score{% if job.score >= STRONG_MATCH %} strong{% endif %}" title="Match score out of 100">
+      <span class="visually-hidden">Match score </span>{{ job.score }}
+    </span>
+  </header>
+  <p class="job-meta">
+    {%- if job.company %}<span>{{ job.company }}</span>{% endif %}
+    {%- if job.location %}<span>{{ job.location }}</span>{% endif %}
+    {%- set pay = salary_text(job.salary_min, job.salary_max) %}
+    {%- if pay %}<span>{{ pay }}</span>{% endif %}
+    {%- if job.closing_date %}
+      {%- set days = (job.closing_date - today).days %}
+      <span class="{{ 'closing-soon' if days <= CLOSING_SOON_DAYS }}">
+        {%- if days < 0 %}Closed{% elif days == 0 %}Closes today{% elif days == 1 %}Closes tomorrow{% else %}Closes {{ job.closing_date | short_date }}{% endif -%}
+      </span>
+    {%- endif %}
+  </p>
+  <p class="reason">{{ job.match_reason }}</p>
+  {% if sources %}
+  <p class="sources"><small>On {{ sources | map(attribute=0) | unique | join(" · ") }}</small></p>
+  {% endif %}
+  <footer class="job-actions">
+    {% if job.state == "saved" %}
+      {{ state_button(job, "new", "Unsave") }}
+    {% elif job.state in ("new", "dismissed") %}
+      {{ state_button(job, "saved", "Save", "") }}
+    {% endif %}
+    {% if job.state == "new" %}
+      {{ state_button(job, "dismissed", "Dismiss") }}
+    {% elif job.state in ("dismissed", "closed") %}
+      {{ state_button(job, "new", "Restore") }}
+    {% endif %}
+    {% if job.url %}
+      <a href="{{ job.url }}" role="button" class="secondary outline" target="_blank" rel="noopener noreferrer">Advert ↗</a>
+    {% endif %}
+  </footer>
+{% endif %}
+</article>

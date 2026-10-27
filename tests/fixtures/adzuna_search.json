@@ -1,0 +1,38 @@
+{
+  "__CLASS__": "Adzuna::API::Response::JobSearchResults",
+  "count": 2,
+  "mean": 31000,
+  "results": [
+    {
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "id": "4900001111",
+      "adref": "eyJhbGciOiJIUzI1NiJ9",
+      "title": "Junior <strong>Python</strong> Developer (Hybrid)",
+      "description": "Acme are hiring a junior <strong>Python</strong> developer to build REST APIs with Git and SQL. Full training given, with a path to mid-level after a year of mentoring from the team&hellip;",
+      "created": "2026-10-21T09:15:00Z",
+      "redirect_url": "https://www.adzuna.co.uk/jobs/land/ad/4900001111",
+      "company": {"__CLASS__": "Adzuna::API::Response::Company", "display_name": "ACME SOFTWARE LIMITED"},
+      "location": {"__CLASS__": "Adzuna::API::Response::Location", "display_name": "Leeds, West Yorkshire", "area": ["UK", "Yorkshire And The Humber", "West Yorkshire", "Leeds"]},
+      "category": {"__CLASS__": "Adzuna::API::Response::Category", "label": "IT Jobs", "tag": "it-jobs"},
+      "salary_min": 26000,
+      "salary_max": 30000,
+      "salary_is_predicted": "0",
+      "contract_type": "permanent",
+      "latitude": 53.79,
+      "longitude": -1.54
+    },
+    {
+      "__CLASS__": "Adzuna::API::Response::Job",
+      "id": "4900002222",
+      "title": "Electronics Test Technician",
+      "description": "Fault finding and soldering on PCB assemblies using a multimeter and scope.",
+      "created": "2026-10-22T11:00:00Z",
+      "redirect_url": "https://www.adzuna.co.uk/jobs/land/ad/4900002222",
+      "company": {"display_name": "Circuitry Works"},
+      "location": {"display_name": "Bradford, West Yorkshire"},
+      "salary_min": 24123.45,
+      "salary_max": 24123.45,
+      "salary_is_predicted": "1"
+    }
+  ]
+}

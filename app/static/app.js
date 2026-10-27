@@ -10,6 +10,14 @@
     if (form) form.requestSubmit();
   });
 
+  // Forms marked data-busy show a spinner on their button while the server works.
+  document.addEventListener("submit", (e) => {
+    const form = e.target.closest("form[data-busy]");
+    if (!form) return;
+    const btn = e.submitter || form.querySelector("button[type=submit]");
+    if (btn) btn.setAttribute("aria-busy", "true");
+  });
+
   // ---------- passkeys ----------
 
   const b64urlToBuf = (s) => {

@@ -1,0 +1,53 @@
+{
+  "results": [
+    {
+      "jobId": 51234567,
+      "employerId": 401,
+      "employerName": "Acme Software Ltd",
+      "employerProfileId": null,
+      "employerProfileName": null,
+      "jobTitle": "Junior Python Developer",
+      "locationName": "Leeds",
+      "minimumSalary": 26000.0,
+      "maximumSalary": 30000.0,
+      "currency": "GBP",
+      "expirationDate": "30/12/2099",
+      "date": "20/10/2026",
+      "jobDescription": "Join our small team building REST APIs in Python. You'll use Git, SQL and Linux every day... ",
+      "applications": 12,
+      "jobUrl": "https://www.reed.co.uk/jobs/junior-python-developer/51234567"
+    },
+    {
+      "jobId": 51234568,
+      "employerId": 402,
+      "employerName": "Bigcorp PLC",
+      "jobTitle": "Senior Python Engineer",
+      "locationName": "Leeds",
+      "minimumSalary": 65000.0,
+      "maximumSalary": 75000.0,
+      "currency": "GBP",
+      "expirationDate": "30/12/2099",
+      "date": "21/10/2026",
+      "jobDescription": "Lead our platform team.",
+      "applications": 3,
+      "jobUrl": "https://www.reed.co.uk/jobs/senior-python-engineer/51234568"
+    },
+    {
+      "jobId": 51234569,
+      "employerId": 403,
+      "employerName": "Old Listing Co",
+      "jobTitle": "Graduate Developer",
+      "locationName": "Leeds",
+      "minimumSalary": null,
+      "maximumSalary": null,
+      "currency": null,
+      "expirationDate": "01/01/2020",
+      "date": "01/12/2019",
+      "jobDescription": "Expired advert.",
+      "applications": 0,
+      "jobUrl": "https://www.reed.co.uk/jobs/graduate-developer/51234569"
+    }
+  ],
+  "ambiguousLocations": [],
+  "totalResults": 3
+}

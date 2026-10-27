@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}{{ plugin.label }} · Job Finder Hub{% endblock %}
+{% block content %}
+{% set connected = row and row.credentials %}
+{% set health = row.health if connected else "not_connected" %}
+<p><a href="/profile/services" class="back">‹ Services</a></p>
+<h1>{{ plugin.label }}</h1>
+<p>{{ plugin.summary }}</p>
+
+{% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+{% if checked and connected %}
+  {% if health == "ok" %}
+  <p class="notice ok" role="status">Connected and working. Jobs will arrive on the next check, or tap Check now on Jobs.</p>
+  {% else %}
+  <p class="notice error" role="alert">{{ row.health_detail or "That didn't work." }}</p>
+  {% endif %}
+{% endif %}
+
+<section>
+  <h2>Status</h2>
+  <p>
+    <span class="health health-{{ health }}">{{ health_labels.get(health, health) }}</span>
+    {% if connected and row.last_checked %}<small>Last checked {{ row.last_checked.astimezone().strftime("%-d %b at %H:%M") }}</small>{% endif %}
+  </p>
+  {% if connected and health != "ok" and row.health_detail and not checked %}<p>{{ row.health_detail }}</p>{% endif %}
+  {% if connected %}
+  <div class="button-row">
+    <form method="post" action="/profile/services/{{ plugin.key }}/check" data-busy>
+      {{ csrf_field(request) }}
+      <button type="submit" class="secondary outline">Check now</button>
+    </form>
+    <form method="post" action="/profile/services/{{ plugin.key }}/disconnect">
+      {{ csrf_field(request) }}
+      <button type="submit" class="secondary outline">Disconnect</button>
+    </form>
+  </div>
+  {% endif %}
+</section>
+
+<section>
+  <h2>{{ "Change key" if connected else "Connect" }}</h2>
+  {% if plugin.signup_url and not connected %}
+  <p>Get a free key at <a href="{{ plugin.signup_url }}" target="_blank" rel="noopener noreferrer">{{ plugin.signup_url | replace("https://", "") }}</a>, then paste it here.</p>
+  {% endif %}
+  <form method="post" action="/profile/services/{{ plugin.key }}" data-busy>
+    {{ csrf_field(request) }}
+    {% for f in plugin.credential_fields %}
+    <label>{{ f.label }}
+      {% if f.secret %}
+      <input type="password" name="{{ f.key }}" autocomplete="off" spellcheck="false"
+             {% if saved.get(f.key) %}placeholder="Saved. Leave blank to keep it"{% else %}required{% endif %}>
+      {% else %}
+      <input name="{{ f.key }}" autocomplete="off" spellcheck="false" value="{{ saved.get(f.key, '') }}" required>
+      {% endif %}
+      {% if f.help %}<small>{{ f.help }}</small>{% endif %}
+    </label>
+    {% endfor %}
+    <button type="submit" class="wide">Save and test</button>
+  </form>
+</section>
+{% endblock %}

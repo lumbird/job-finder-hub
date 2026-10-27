@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -13,9 +14,12 @@ from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
 from app.config import Settings, load_settings
+from app.criteria import CriteriaFile
 from app.db import make_engine, run_migrations
 from app.deps import NeedsLogin, templates, user_exists
-from app.routes import auth, pages
+from app.ingest import Fetcher
+from app.routes import auth, jobs, pages, settings as settings_routes
+from app.scheduler import start_scheduler
 from app.security.crypto import SecretBox
 from app.security.csrf import CSRF_COOKIE
 from app.security.passkeys import ChallengeStore
@@ -29,20 +33,35 @@ CSP = (
 )
 
 
-def create_app(settings: Settings | None = None, sleep=asyncio.sleep) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, sleep=asyncio.sleep, http_transport=None, scheduler: bool = True
+) -> FastAPI:
+    """`http_transport` lets tests fake the job sites; `scheduler=False` skips background jobs."""
     settings = settings or load_settings()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
 
     run_migrations(settings)
     engine = make_engine(settings)
 
-    app = FastAPI(title="Job Finder Hub", docs_url=None, redoc_url=None, openapi_url=None)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        app.state.scheduler = start_scheduler(app) if scheduler else None
+        yield
+        if app.state.scheduler:
+            app.state.scheduler.shutdown(wait=False)
+
+    app = FastAPI(title="Job Finder Hub", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.settings = settings
     app.state.engine = engine
     app.state.secret_box = SecretBox(settings.fernet_key)
     app.state.challenges = ChallengeStore()
     app.state.setup_code = SetupCode(settings.data_dir / ".setup-code")
     app.state.sleep = sleep  # swapped out in tests so throttling doesn't really wait
+    app.state.http_transport = http_transport
+    app.state.criteria_file = CriteriaFile(settings.data_dir / "criteria.yaml")
+    app.state.fetcher = Fetcher(engine, app.state.secret_box, app.state.criteria_file, http_transport)
+    app.state.scheduler = None
 
     with Session(engine) as db:
         if not user_exists(db):
@@ -99,5 +118,7 @@ def create_app(settings: Settings | None = None, sleep=asyncio.sleep) -> FastAPI
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     app.include_router(auth.router)
     app.include_router(pages.router)
+    app.include_router(jobs.router)
+    app.include_router(settings_routes.router)
     return app
 

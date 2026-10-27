@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Services · Job Finder Hub{% endblock %}
+{% block content %}
+<p><a href="/profile" class="back">‹ Profile</a></p>
+<h1>Services</h1>
+<p>Where the hub looks for jobs, reads replies and prepares reports. Keys are stored encrypted on the Pi.</p>
+
+{% for kind, items in groups.items() %}
+<section>
+  <h2>{{ kind_labels[kind] }}</h2>
+  <nav class="menu" aria-label="{{ kind_labels[kind] }}">
+    {% for item in items %}
+      {% if item.phase %}
+      <div class="soon">
+        <span><strong>{{ item.label }}</strong><small>{{ item.summary }} Coming in phase {{ item.phase }}.</small></span>
+      </div>
+      {% else %}
+      {% set health = item.row.health if item.row and item.row.credentials else "not_connected" %}
+      <a href="/profile/services/{{ item.key }}">
+        <span><strong>{{ item.label }}</strong><small>{{ item.summary }}</small></span>
+        <span class="health health-{{ health }}">{{ health_labels.get(health, health) }}</span>
+      </a>
+      {% endif %}
+    {% endfor %}
+  </nav>
+</section>
+{% endfor %}
+{% endblock %}

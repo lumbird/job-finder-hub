@@ -1,9 +1,10 @@
-"""Database tables. Phase 1 covers login only; later phases add the rest of the data model."""
+"""Database tables, added phase by phase (see docs/product-spec.md, Data model)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -46,3 +47,58 @@ class LoginThrottle(SQLModel, table=True):
     failures: int = 0
     last_failure_at: datetime | None = None
     locked_until: datetime | None = None
+
+
+# ---------- Services (phase 2) ----------
+
+
+class Service(SQLModel, table=True):
+    """A connected plug-in: a job site, email account or reporting target."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    kind: str  # email, job_site, reporting
+    name: str = Field(unique=True)  # plug-in key, e.g. "reed"
+    config: str = "{}"  # JSON, non-secret settings
+    credentials: str | None = None  # Fernet-encrypted JSON
+    enabled: bool = True
+    health: str = "not_connected"  # ok, broken, needs_login, rate_limited, not_connected
+    health_detail: str | None = None
+    last_checked: datetime | None = None
+
+
+# ---------- Jobs (phase 2) ----------
+
+
+class Job(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    source_service_id: int = Field(foreign_key="service.id", index=True)
+    external_id: str
+    title: str
+    company: str = ""
+    location: str = ""
+    salary_min: float | None = None
+    salary_max: float | None = None
+    url: str = ""
+    description: str = ""
+    closing_date: date | None = None
+    posted_at: datetime | None = None
+    fingerprint: str = Field(index=True)  # same job on several boards collapses to one row
+    score: int = 0
+    match_reason: str = ""
+    profile: str = ""  # which criteria profile it matched best
+    state: str = Field(default="new", index=True)  # new, saved, dismissed, closed
+    first_seen_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
+class JobSource(SQLModel, table=True):
+    """Every board a job was seen on, including the one in job.source_service_id."""
+
+    __tablename__ = "job_source"
+    __table_args__ = (UniqueConstraint("service_id", "external_id"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    job_id: int = Field(foreign_key="job.id", index=True)
+    service_id: int = Field(foreign_key="service.id")
+    external_id: str
+    url: str = ""

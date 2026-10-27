@@ -37,6 +37,26 @@ templates.env.globals["theme_for"] = theme_for
 templates.env.globals["request_origin"] = request_origin
 
 
+def salary_text(low: float | None, high: float | None) -> str:
+    def fmt(n: float) -> str:
+        # Hourly and daily rates are small numbers; show pence only when there are some.
+        return f"£{n:,.2f}" if n < 1000 and n != int(n) else f"£{n:,.0f}"
+
+    if low and high and low != high:
+        return f"{fmt(low)}–{fmt(high)}"
+    if low or high:
+        return fmt(low or high)
+    return ""
+
+
+def short_date(value) -> str:
+    return value.strftime("%-d %b") if value else ""
+
+
+templates.env.filters["short_date"] = short_date
+templates.env.globals["salary_text"] = salary_text
+
+
 def get_db(request: Request) -> Iterator[Session]:
     with Session(request.app.state.engine) as session:
         yield session
