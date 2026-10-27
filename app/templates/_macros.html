@@ -9,7 +9,7 @@
   <input type="hidden" name="next" value="{{ request.url.path }}">
   <fieldset>
     <legend>Theme</legend>
-    <div class="segmented" role="radiogroup">
+    <div class="segmented" role="radiogroup" aria-label="Theme">
       {% for value, label in [("system", "System"), ("light", "Light"), ("dark", "Dark")] %}
       <label>
         <input type="radio" name="theme" value="{{ value }}"{% if theme == value %} checked{% endif %}>

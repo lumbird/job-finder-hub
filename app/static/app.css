@@ -211,3 +211,66 @@ button, [role="button"], input:not([type="checkbox"], [type="radio"], [type="hid
 .button-row form, .button-row button { margin: 0; }
 
 textarea.code { font-family: var(--pico-font-family-monospace); font-size: .85rem; line-height: 1.45; }
+
+/* ---------- Polish pass ---------- */
+
+/* Pico adds a big top margin to headings that follow a paragraph; we space sections ourselves. */
+h1, h2, h3 { margin-top: 0; }
+main.container { padding-top: .75rem; }
+h1 { font-size: 1.75rem; letter-spacing: -.01em; margin-bottom: .75rem; }
+section > h2 {
+  font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--pico-muted-color); margin: 0 0 .5rem .25rem;
+}
+p:has(> .back) { margin-bottom: 0; }
+.back { min-height: 40px; font-size: .95rem; }
+
+/* Settings-style grouped lists: rows inside a rounded card */
+.menu, .rows {
+  background: var(--pico-card-background-color);
+  border-radius: calc(var(--pico-border-radius) * 2);
+  padding: 0 1rem;
+  box-shadow: var(--pico-card-box-shadow);
+}
+.menu > a, .menu > div, .rows > li { min-height: 64px; padding: .75rem 0; }
+.menu > :last-child, .rows > li:last-child { border-bottom: 0; }
+.menu > a:active { opacity: .7; }
+.menu > a > span:last-child[aria-hidden] { font-size: 1.4rem; color: var(--pico-muted-color); }
+.menu strong { font-weight: 600; }
+.menu small { margin-top: .1rem; }
+.menu .soon strong::after {
+  content: "Soon"; margin-left: .5rem; padding: .05rem .45rem; border-radius: 999px; vertical-align: 2px;
+  font-size: .7rem; font-weight: 600; border: 1px solid var(--pico-muted-border-color);
+}
+
+/* Segmented control: the whole segment is the target and the highlight */
+.segmented {
+  display: flex; gap: 4px; padding: 4px;
+  background: var(--pico-card-background-color); border-radius: calc(var(--pico-border-radius) * 2);
+  border: 1px solid var(--pico-muted-border-color);
+}
+.segmented label { flex: 1; display: flex; margin: 0; }
+.segmented span {
+  flex: 1; border-radius: var(--pico-border-radius); border: 0 !important;
+  font-weight: 500; transition: background-color .15s;
+}
+.theme-toggle legend { display: none; }
+
+/* Empty states: calmer, with breathing room around the action */
+.empty { padding: 1.75rem 1.25rem; border-radius: calc(var(--pico-border-radius) * 2); }
+.empty p:first-child { font-size: 1.1rem; margin-bottom: .5rem; }
+.empty p { color: var(--pico-muted-color); }
+.empty p strong { color: var(--pico-color); }
+.empty [role="button"] { margin: .5rem 0 1.25rem; }
+
+/* Cards */
+.job { border-radius: calc(var(--pico-border-radius) * 2); }
+.notice { border-radius: calc(var(--pico-border-radius) * 1.5); }
+
+/* Tab bar: a little more presence for the current tab */
+.tabbar a[aria-current="page"] svg { stroke-width: 2.2; }
+.tabbar a { position: relative; }
+.tabbar a[aria-current="page"]::before {
+  content: ""; position: absolute; top: 0; left: 30%; right: 30%; height: 3px;
+  border-radius: 0 0 3px 3px; background: var(--pico-primary);
+}
