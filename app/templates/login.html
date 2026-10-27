@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}Sign in · Job Finder Hub{% endblock %}
+{% block content %}
+<article class="narrow">
+  <header>
+    <h1>Job Finder Hub</h1>
+  </header>
+  {% if error %}<p class="notice error" role="alert">{{ error }}</p>{% endif %}
+  <p class="notice error" role="alert" id="passkey-error" hidden></p>
+
+  {% if has_passkeys %}
+  <button type="button" id="passkey-login" data-next="{{ next }}" class="wide">Sign in with passkey</button>
+  {% if request_origin(request) != public_origin %}
+  <p><small>Passkeys only work at <a href="{{ public_origin }}/login">{{ public_origin }}</a>.</small></p>
+  {% endif %}
+  <p class="divider"><span>or use your password</span></p>
+  {% endif %}
+
+  <form method="post" action="/login">
+    {{ csrf_field(request) }}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password"{% if not has_passkeys %} autofocus{% endif %}>
+    </label>
+    {% if totp_enabled %}
+    <label>Authenticator code
+      <input name="totp" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7">
+    </label>
+    {% endif %}
+    <button type="submit" class="{{ 'secondary ' if has_passkeys }}wide">Sign in</button>
+  </form>
+</article>
+{% endblock %}

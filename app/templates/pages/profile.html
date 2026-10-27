@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import theme_toggle, csrf_field %}
+{% block title %}Profile · Job Finder Hub{% endblock %}
+{% block content %}
+<h1>Profile</h1>
+
+<nav class="menu" aria-label="Profile sections">
+  <a href="/profile/security">
+    <span><strong>Sign-in and security</strong><small>Passkeys, password, authenticator codes</small></span>
+    <span aria-hidden="true">›</span>
+  </a>
+  <div class="soon">
+    <span><strong>CV and criteria</strong><small>Phase 2</small></span>
+  </div>
+  <div class="soon">
+    <span><strong>Services</strong><small>Job sites, email and reporting connections · phase 2</small></span>
+  </div>
+  <div class="soon">
+    <span><strong>Notify</strong><small>Telegram alerts · phase 6</small></span>
+  </div>
+</nav>
+
+<section>
+  <h2>Appearance</h2>
+  {{ theme_toggle(request) }}
+</section>
+
+<section>
+  <form method="post" action="/logout">
+    {{ csrf_field(request) }}
+    <button type="submit" class="secondary outline wide">Sign out</button>
+  </form>
+</section>
+{% endblock %}

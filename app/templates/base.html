@@ -1,0 +1,47 @@
+{%- set theme = theme_for(request) -%}
+<!doctype html>
+<html lang="en-GB"{% if theme != "system" %} data-theme="{{ theme }}"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{% block title %}Job Finder Hub{% endblock %}</title>
+  {%- if theme == "system" %}
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="{{ THEME_COLORS.light }}">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="{{ THEME_COLORS.dark }}">
+  {%- else %}
+  <meta name="color-scheme" content="{{ theme }}">
+  <meta name="theme-color" content="{{ THEME_COLORS[theme] }}">
+  {%- endif %}
+  <meta name="csrf-token" content="{{ csrf_token(request) }}">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false}'>
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token(request) }}"}'{% if tab %} class="has-tabs"{% endif %}>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% if tab %}
+  <nav class="tabbar" aria-label="Main">
+    {% for key, label, icon in [
+      ("jobs", "Jobs", "M4 7h16v12H4zM9 7V5h6v2"),
+      ("applications", "Applications", "M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"),
+      ("reporting", "Reporting", "M6 20V10M12 20V4M18 20v-7"),
+      ("profile", "Profile", "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"),
+    ] %}
+    <a href="/{{ key }}"{% if tab == key %} aria-current="page"{% endif %}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ icon }}"/></svg>
+      <span>{{ label }}</span>
+    </a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+</body>
+</html>

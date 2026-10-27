@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Problem · Job Finder Hub{% endblock %}
+{% block content %}
+<article class="narrow">
+  <h1>{{ "Not found" if status == 404 else "Something went wrong" }}</h1>
+  <p>{{ detail }}</p>
+  <p><a href="/" role="button" class="secondary">Back to the hub</a></p>
+</article>
+{% endblock %}

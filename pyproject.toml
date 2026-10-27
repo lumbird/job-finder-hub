@@ -1,0 +1,14 @@
+[project]
+name = "job-finder-hub"
+version = "0.1.0"
+description = "Self-hosted job search hub for one candidate"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning:webauthn.*"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"

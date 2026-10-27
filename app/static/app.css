@@ -1,0 +1,136 @@
+/* Job Finder Hub: layer over Pico CSS. Mobile first; 360px is the narrowest target. */
+
+:root {
+  --hub-bg: #ffffff;
+  --hub-ok-bg: #e6f4ea;
+  --hub-ok-border: #2e7d4f;
+  --hub-error-bg: #fdecea;
+  --hub-error-border: #c0392b;
+  --hub-tap: 44px;
+  --hub-tabbar-h: 60px;
+}
+
+/* Soft dark greys, not pure black. Keep --hub-bg in step with THEME_COLORS in app/deps.py. */
+[data-theme="dark"] {
+  --hub-bg: #1d2026;
+  --pico-background-color: #1d2026;
+  --pico-card-background-color: #262a31;
+  --pico-card-sectioning-background-color: #2c3038;
+  --pico-form-element-background-color: #262a31;
+  --pico-muted-border-color: #383d47;
+  --hub-ok-bg: #1d3628;
+  --hub-ok-border: #4caf7a;
+  --hub-error-bg: #3d2120;
+  --hub-error-border: #e06b5f;
+}
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --hub-bg: #1d2026;
+    --pico-background-color: #1d2026;
+    --pico-card-background-color: #262a31;
+    --pico-card-sectioning-background-color: #2c3038;
+    --pico-form-element-background-color: #262a31;
+    --pico-muted-border-color: #383d47;
+    --hub-ok-bg: #1d3628;
+    --hub-ok-border: #4caf7a;
+    --hub-error-bg: #3d2120;
+    --hub-error-border: #e06b5f;
+  }
+}
+
+html, body { background-color: var(--hub-bg); }
+body { overflow-x: hidden; }
+main.container { padding-top: 1rem; }
+body.has-tabs main.container {
+  padding-bottom: calc(var(--hub-tabbar-h) + 1.5rem + env(safe-area-inset-bottom));
+}
+
+h1 { font-size: 1.6rem; margin-bottom: 1rem; }
+h2 { font-size: 1.2rem; margin-bottom: .5rem; }
+section { margin-bottom: 2rem; }
+small { display: block; color: var(--pico-muted-color); }
+
+/* Touch: everything tappable is at least 44px. */
+button, [role="button"], input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, summary {
+  min-height: var(--hub-tap);
+}
+.wide { width: 100%; }
+
+.narrow { max-width: 28rem; margin: 2rem auto; }
+
+.notice {
+  padding: .75rem 1rem;
+  border-radius: var(--pico-border-radius);
+  border-left: 4px solid;
+  color: var(--pico-color);
+}
+.notice.ok { background: var(--hub-ok-bg); border-color: var(--hub-ok-border); }
+.notice.error { background: var(--hub-error-bg); border-color: var(--hub-error-border); }
+
+.divider {
+  display: flex; align-items: center; gap: .75rem;
+  margin: 1.25rem 0; color: var(--pico-muted-color); font-size: .9rem;
+}
+.divider::before, .divider::after { content: ""; flex: 1; border-top: 1px solid var(--pico-muted-border-color); }
+
+.empty { text-align: center; }
+.back { display: inline-flex; align-items: center; min-height: var(--hub-tap); text-decoration: none; }
+
+/* Bottom tab bar */
+.tabbar {
+  position: fixed; inset: auto 0 0 0; z-index: 10;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--pico-card-background-color);
+  border-top: 1px solid var(--pico-muted-border-color);
+}
+.tabbar a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: var(--hub-tabbar-h);
+  color: var(--pico-muted-color); text-decoration: none; font-size: .75rem;
+}
+.tabbar a[aria-current="page"] { color: var(--pico-primary); font-weight: 600; }
+.tabbar svg {
+  width: 24px; height: 24px; fill: none; stroke: currentColor;
+  stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* Profile menu and simple rows */
+.menu { display: block; margin-bottom: 2rem; }
+.menu > a, .menu > div, .rows > li {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  min-height: 56px; padding: .5rem 0;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  color: inherit; text-decoration: none;
+}
+.menu .soon { opacity: .6; }
+.rows { padding: 0; margin-bottom: 1rem; }
+.rows > li { list-style: none; }
+.rows form { margin: 0; }
+.rows button { margin: 0; padding: .4rem 1rem; }
+
+/* Theme: segmented radio control */
+.theme-toggle fieldset { margin: 0; }
+.theme-toggle legend { font-size: .9rem; color: var(--pico-muted-color); margin-bottom: .25rem; }
+.segmented {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); overflow: hidden;
+}
+.segmented label { margin: 0; position: relative; }
+.segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.segmented span {
+  display: flex; align-items: center; justify-content: center;
+  min-height: var(--hub-tap); cursor: pointer;
+}
+.segmented label + label span { border-left: 1px solid var(--pico-muted-border-color); }
+.segmented input:checked + span { background: var(--pico-primary-background); color: var(--pico-primary-inverse); }
+.segmented input:focus-visible + span { outline: 2px solid var(--pico-primary); outline-offset: -4px; }
+
+/* TOTP setup */
+.qr { background: #fff; width: fit-content; padding: .5rem; border-radius: var(--pico-border-radius); margin: 0 auto 1rem; }
+.qr svg { display: block; width: 200px; height: 200px; }
+.key { text-align: center; word-break: break-all; }
+
+@media (min-width: 768px) {
+  main.container { max-width: 720px; }
+}

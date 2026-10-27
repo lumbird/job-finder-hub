@@ -1,0 +1,23 @@
+{% macro csrf_field(request) -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token(request) }}">
+{%- endmacro %}
+
+{% macro theme_toggle(request) -%}
+{%- set theme = theme_for(request) -%}
+<form method="post" action="/theme" class="theme-toggle" data-autosubmit>
+  {{ csrf_field(request) }}
+  <input type="hidden" name="next" value="{{ request.url.path }}">
+  <fieldset>
+    <legend>Theme</legend>
+    <div class="segmented" role="radiogroup">
+      {% for value, label in [("system", "System"), ("light", "Light"), ("dark", "Dark")] %}
+      <label>
+        <input type="radio" name="theme" value="{{ value }}"{% if theme == value %} checked{% endif %}>
+        <span>{{ label }}</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <noscript><button type="submit" class="secondary">Apply theme</button></noscript>
+</form>
+{%- endmacro %}
