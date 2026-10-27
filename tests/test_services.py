@@ -7,13 +7,14 @@ from datetime import date
 import httpx
 import pytest
 
-from app.criteria import DEFAULT_YAML, parse
+from app.criteria import DEFAULT_YAML, Area, parse
 from app.services.adzuna import Adzuna
 from app.services.base import NeedsLogin, Plugin, RateLimited, ServiceError
 from app.services.reed import Reed
 from tests.fakes import FakeBoards
 
-CRITERIA = parse(DEFAULT_YAML.replace('location: ""', "location: Leeds").replace("salary_floor: 0", "salary_floor: 20000"))
+CRITERIA = parse(DEFAULT_YAML.replace("salary_floor: 0", "salary_floor: 20000"))
+LEEDS = Area("Leeds", 20)
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +28,7 @@ def run(coro):
 
 async def _search(plugin_cls, creds, boards, query="junior python developer"):
     async with httpx.AsyncClient(transport=boards.transport) as http:
-        return await plugin_cls(creds, http).search(query, CRITERIA)
+        return await plugin_cls(creds, http).search(query, CRITERIA, LEEDS)
 
 
 def test_reed_search_parses_results_and_sends_criteria():

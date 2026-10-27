@@ -38,6 +38,34 @@
   {% endif %}
 </section>
 
+{% if plugin.kind == "job_site" %}
+<section>
+  <h2>API calls</h2>
+  {% if limits_saved %}<p class="notice ok" role="status">Limits saved.</p>{% endif %}
+  {% if usage %}
+  <p>Used <strong>{{ usage.today }}</strong> today{% if limits.per_day %} of {{ limits.per_day }}{% endif %},
+     <strong>{{ usage.month }}</strong> this month{% if limits.per_month %} of {{ limits.per_month }}{% endif %}.
+     {% if calls_left == 0 %}<br><strong>Paused</strong> until the limit resets.{% endif %}</p>
+  {% endif %}
+  <form method="post" action="/profile/services/{{ plugin.key }}/limits">
+    {{ csrf_field(request) }}
+    <div class="grid">
+      <label>Fetch every (hours)
+        <input type="number" name="every_hours" min="0" value="{{ limits.every_hours }}">
+      </label>
+      <label>Calls per day
+        <input type="number" name="per_day" min="0" value="{{ limits.per_day }}">
+      </label>
+      <label>Calls per month
+        <input type="number" name="per_month" min="0" value="{{ limits.per_month }}">
+      </label>
+    </div>
+    <small>0 means no limit. Each search phrase is one call. Check now on Jobs ignores the hours, but never the caps.</small>
+    <button type="submit" class="secondary wide">Save limits</button>
+  </form>
+</section>
+{% endif %}
+
 <section>
   <h2>{{ "Change key" if connected else "Connect" }}</h2>
   {% if plugin.signup_url and not connected %}

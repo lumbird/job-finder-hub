@@ -17,6 +17,7 @@ from app.config import Settings, load_settings
 from app.criteria import CriteriaFile
 from app.db import make_engine, run_migrations
 from app.deps import NeedsLogin, templates, user_exists
+from app.geo import GeoCache
 from app.ingest import Fetcher
 from app.routes import applications, auth, jobs, pages, reporting, settings as settings_routes
 from app.scheduler import start_scheduler
@@ -60,7 +61,8 @@ def create_app(
     app.state.sleep = sleep  # swapped out in tests so throttling doesn't really wait
     app.state.http_transport = http_transport
     app.state.criteria_file = CriteriaFile(settings.data_dir / "criteria.yaml")
-    app.state.fetcher = Fetcher(engine, app.state.secret_box, app.state.criteria_file, http_transport)
+    app.state.geo = GeoCache(settings.data_dir / "geocache.json")
+    app.state.fetcher = Fetcher(engine, app.state.secret_box, app.state.criteria_file, http_transport, app.state.geo)
     app.state.scheduler = None
 
     with Session(engine) as db:

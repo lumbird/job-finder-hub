@@ -193,6 +193,22 @@ def test_save_dismiss_and_undo_with_htmx(stocked):
     assert job_named(stocked, "Junior Python").state == "saved"
 
 
+def test_new_advert_for_a_saved_title_says_so(stocked):
+    with Session(stocked.app.state.engine) as db:
+        tech = db.exec(select(Job).where(Job.title.startswith("Electronics"))).one()
+        twin = Job(
+            source_service_id=tech.source_service_id, external_id="twin", title=tech.title,
+            company="Another Recruiter", location="Elsewhere", fingerprint="twin", score=60,
+        )
+        db.add(twin)
+        db.commit()
+        tech_id = tech.id
+    token = csrf(stocked, "/jobs")
+    stocked.post(f"/jobs/{tech_id}/state", data={"csrf_token": token, "state": "saved"})
+    html = stocked.get("/jobs?view=new").text
+    assert "You saved a similar advert" in html and f'href="/jobs/{tech_id}"' in html
+
+
 def test_state_change_without_js_redirects_back(stocked):
     job = job_named(stocked, "Electronics")
     token = csrf(stocked, "/jobs")
@@ -272,3 +288,114 @@ def test_backup_keeps_last_fourteen(tmp_path, stocked):
     kept = sorted(p.name for p in backups.glob("hub-*.db"))
     assert len(kept) == 14 and target.name in kept
     assert target.stat().st_size > 0
+
+
+# ---------- call budgets ----------
+
+
+def test_calls_are_counted_and_monthly_cap_pauses_a_board(hub, boards):
+    connect(hub, "adzuna", app_id="i", app_key="k")  # the key check is one call
+    token = csrf(hub, "/profile/services/adzuna")
+    hub.post("/profile/services/adzuna/limits", data={"csrf_token": token, "every_hours": "0", "per_day": "0", "per_month": "3"})
+    hub.post("/jobs/fetch", data={"csrf_token": csrf(hub, "/jobs")})
+    assert len(boards.hits("api.adzuna.com")) == 3  # stopped at the cap, not one call per search
+    page = hub.get("/jobs?fetched=1").text
+    assert "Paused until next month" in page
+
+    hub.post("/jobs/fetch", data={"csrf_token": csrf(hub, "/jobs")})
+    assert len(boards.hits("api.adzuna.com")) == 3  # no more calls at all
+    page = hub.get("/profile/services/adzuna").text
+    assert "<strong>3</strong> this month of 3" in page and "Paused" in page
+
+
+def test_scheduled_fetch_waits_for_every_hours_but_check_now_doesnt(hub, boards):
+    import asyncio
+
+    connect(hub, "adzuna", app_id="i", app_key="k")
+    fetcher = hub.app.state.fetcher
+    asyncio.run(fetcher.run())
+    after_first = len(boards.hits("api.adzuna.com"))
+    assert after_first > 1
+    asyncio.run(fetcher.run())  # scheduled again within Adzuna's 24 hours: skipped
+    assert len(boards.hits("api.adzuna.com")) == after_first
+    asyncio.run(fetcher.run(force=True))
+    assert len(boards.hits("api.adzuna.com")) > after_first
+
+
+# ---------- criteria form ----------
+
+
+def _criteria_form(client, **overrides):
+    """The form as the page shows it, with overrides."""
+    c = client.app.state.criteria_file.load()
+    data = {
+        "csrf_token": csrf(client, "/profile/criteria"),
+        "area_count": str(len(c.areas)),
+        "salary_floor": str(c.salary_floor),
+        "fetch_every_minutes": str(c.fetch_every_minutes),
+        "daily_cap": str(c.daily_cap),
+        "calm_mode_on": "1",
+        "profile_count": str(len(c.profiles)),
+    }
+    for i, p in enumerate(c.profiles):
+        data |= {
+            f"p{i}_name": p.name,
+            f"p{i}_searches": "\n".join(p.searches),
+            f"p{i}_keywords": ", ".join(p.keywords),
+            f"p{i}_must_have": ", ".join(p.must_have),
+            f"p{i}_dealbreakers": ", ".join(p.dealbreakers),
+        }
+    return data | overrides
+
+
+def test_criteria_form_writes_the_yaml_file(stocked):
+    data = _criteria_form(
+        stocked,
+        a0_name="London",
+        a0_miles="30",
+        a1_name="Leeds",
+        p0_remove="1",
+        p3_name="Field engineer",
+        p3_searches="field service engineer\nfield engineer",
+        p3_keywords="travel, repair",
+    )
+    r = stocked.post("/profile/criteria/form", data=data)
+    assert r.status_code == 303 and r.headers["location"].startswith("/profile/criteria?saved=")
+    text = stocked.app.state.criteria_file.text()
+    assert '{name: "London", miles: 30}' in text and '{name: "Leeds", miles: 20}' in text
+    assert '"field service engineer"' in text
+    c = stocked.app.state.criteria_file.load()
+    assert [p.name for p in c.profiles] == ["Junior developer", "Electronics or repair technician", "Field engineer"]
+    assert 'value="London"' in stocked.get("/profile/criteria").text
+    assert "Field engineer" in stocked.get("/profile/criteria/yaml").text
+
+
+def test_criteria_form_rejects_bad_input_and_keeps_the_file(stocked):
+    before = stocked.app.state.criteria_file.text()
+    r = stocked.post("/profile/criteria/form", data=_criteria_form(stocked, p0_searches=""))
+    assert r.status_code == 400 and "add at least one search" in r.text
+    r = stocked.post("/profile/criteria/form", data=_criteria_form(stocked, a0_name="York", a0_miles="far"))
+    assert r.status_code == 400 and "whole number" in r.text
+    assert stocked.app.state.criteria_file.text() == before
+
+
+def test_each_search_runs_in_each_area(hub, boards):
+    text = hub.app.state.criteria_file.text().replace("areas: []", "areas:\n  - {name: London, miles: 30}\n  - {name: Leeds, miles: 15}")
+    hub.post("/profile/criteria", data={"csrf_token": csrf(hub, "/profile/criteria"), "criteria": text})
+    connect(hub, "reed", api_key="k")
+    boards.requests.clear()
+    hub.post("/jobs/fetch", data={"csrf_token": csrf(hub, "/jobs")})
+    places = [(r.url.params["locationName"], r.url.params["distanceFromLocation"]) for r in boards.hits("www.reed.co.uk")]
+    assert len(places) == 8 * 2  # the default criteria's 8 searches, in both areas
+    assert places.count(("London", "30")) == 8 and places.count(("Leeds", "15")) == 8
+
+
+def test_cards_show_distance_from_each_area(hub, boards):
+    text = hub.app.state.criteria_file.text().replace("areas: []", "areas:\n  - {name: London, miles: 30}\n  - {name: Leeds, miles: 15}")
+    hub.post("/profile/criteria", data={"csrf_token": csrf(hub, "/profile/criteria"), "criteria": text})
+    connect(hub, "reed", api_key="k")  # the sample Reed jobs are all in Leeds
+    hub.post("/jobs/fetch", data={"csrf_token": csrf(hub, "/jobs")})
+    html = hub.get("/jobs?view=new").text
+    assert '<span class="in-area">0 mi from Leeds</span> · <span class="">169 mi from London</span>' in html
+    assert "Outside your areas" not in html
+    assert (hub.app.state.settings.data_dir / "geocache.json").exists()

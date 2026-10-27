@@ -184,6 +184,7 @@ button, [role="button"], input:not([type="checkbox"], [type="radio"], [type="hid
 .closing-soon { color: var(--hub-soon-text); font-weight: 600; }
 .reason { margin-bottom: .5rem; }
 .sources { margin-bottom: .75rem; }
+.saved-like { margin-bottom: .5rem; color: var(--pico-muted-color); }
 .job-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; background: none; border: 0; }
 .job-actions form { margin: 0; }
 .job-actions button, .job-actions [role="button"] { margin: 0; padding: .5rem 1rem; }
@@ -376,3 +377,11 @@ progress { margin-bottom: 1.5rem; }
 .report-menu .menu-button, .report-menu .report-done { display: block; min-height: var(--hub-tap); padding: .6rem 1rem; }
 .report-menu .report-done { color: var(--pico-muted-color); text-decoration: none; }
 .row-actions .status { align-self: center; }
+
+.profile-box { border: 1px solid var(--pico-muted-border-color); border-radius: var(--pico-border-radius); padding: .5rem .9rem; margin-bottom: .75rem; }
+.profile-box[open] { padding-bottom: .9rem; }
+.area-row { align-items: end; }
+.area-remove { padding-bottom: 1rem; }
+.distances { margin-bottom: .4rem; color: var(--pico-muted-color); }
+.distances .in-area { color: var(--pico-color); }
+.distances .outside { color: var(--pico-del-color); }

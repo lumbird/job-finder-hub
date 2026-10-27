@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from app.criteria import Criteria
+from app.criteria import Area, Criteria
 from app.services.base import CredentialField, JobSitePlugin, Listing, ServiceError, clean_text, money
 
 API = "https://api.adzuna.com/v1/api/jobs/gb/search/1"
@@ -16,6 +16,8 @@ class Adzuna(JobSitePlugin):
     label = "Adzuna"
     summary = "Job search engine that gathers listings from many UK boards."
     signup_url = "https://developer.adzuna.com/"
+    # The free tier is small and Adzuna charges past it, so fetch once a day and cap the month.
+    default_limits = {"every_hours": 24, "per_day": 25, "per_month": 25}
     credential_fields = (
         CredentialField("app_id", "App ID", secret=False, help="From developer.adzuna.com → Dashboard"),
         CredentialField("app_key", "App key"),
@@ -32,11 +34,11 @@ class Adzuna(JobSitePlugin):
     async def check(self) -> None:
         await self._get(API, params=self._params(what="developer", results_per_page=1))
 
-    async def search(self, query: str, criteria: Criteria) -> list[Listing]:
+    async def search(self, query: str, criteria: Criteria, area: Area | None = None) -> list[Listing]:
         extra: dict = {"what": query, "results_per_page": 50, "max_days_old": 30, "sort_by": "date"}
-        if criteria.location:
-            extra["where"] = criteria.location
-            extra["distance"] = round(criteria.distance_miles * KM_PER_MILE)
+        if area:
+            extra["where"] = area.name
+            extra["distance"] = round(area.miles * KM_PER_MILE)
         if criteria.salary_floor:
             extra["salary_min"] = criteria.salary_floor
         response = await self._get(API, params=self._params(**extra))

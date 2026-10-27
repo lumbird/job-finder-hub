@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.criteria import Criteria
+from app.criteria import Area, Criteria
 from app.services.base import CredentialField, JobSitePlugin, Listing, ServiceError, clean_text, money
 
 API = "https://www.reed.co.uk/api/1.0/search"
@@ -31,11 +31,11 @@ class Reed(JobSitePlugin):
     async def check(self) -> None:
         await self._get(API, params={"keywords": "developer", "resultsToTake": 1}, auth=self._auth)
 
-    async def search(self, query: str, criteria: Criteria) -> list[Listing]:
+    async def search(self, query: str, criteria: Criteria, area: Area | None = None) -> list[Listing]:
         params: dict = {"keywords": query, "resultsToTake": 100}
-        if criteria.location:
-            params["locationName"] = criteria.location
-            params["distanceFromLocation"] = criteria.distance_miles
+        if area:
+            params["locationName"] = area.name
+            params["distanceFromLocation"] = area.miles
         if criteria.salary_floor:
             params["minimumSalary"] = criteria.salary_floor
         response = await self._get(API, params=params, auth=self._auth)

@@ -93,4 +93,21 @@
   </ul>
 </section>
 {% endif %}
+
+<section>
+  <h2>Export jobs applied for</h2>
+  <p><small>For your work coach: job title, date applied and "Yes" only. For your own records: the full list with company, place, status, CV and link.</small></p>
+  <form method="get" action="/reporting/export/applied.csv" class="export">
+    <div class="grid">
+      <label>From <input type="date" name="since"></label>
+      <label>To <input type="date" name="until"></label>
+    </div>
+    <small>Leave the dates blank for everything.</small>
+    <div class="button-row">
+      <button type="submit" name="detail" value="coach">Work coach list (CSV)</button>
+      <button type="submit" name="detail" value="full" class="secondary">Full list (CSV)</button>
+      <button type="submit" name="detail" value="coach" formaction="/reporting/export/applied.txt" class="secondary outline">Work coach list (text)</button>
+    </div>
+  </form>
+</section>
 {% endblock %}

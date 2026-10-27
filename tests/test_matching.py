@@ -101,8 +101,41 @@ def test_default_criteria_parse():
         ("profiles:\n  - name: A\n    searches: dev", "should be a list"),
         ("salary_floor: lots\nprofiles:\n  - name: A\n    searches: [x]", "whole number"),
         ("fetch_every_minutes: 1\nprofiles:\n  - name: A\n    searches: [x]", "at least 15"),
+        ("areas: [{miles: 5}]\nprofiles:\n  - name: A\n    searches: [x]", "needs a name"),
     ],
 )
 def test_bad_criteria_explain_themselves(text, message):
     with pytest.raises(CriteriaError, match=message):
         parse(text)
+
+
+def test_old_single_location_still_reads():
+    c = parse("location: York\ndistance_miles: 12\nprofiles:\n  - name: A\n    searches: [x]")
+    assert [(a.name, a.miles) for a in c.areas] == [("York", 12)]
+    c = parse("areas: [Leeds, {name: London, miles: 30}]\nprofiles:\n  - name: A\n    searches: [x]")
+    assert [(a.name, a.miles) for a in c.areas] == [("Leeds", 20), ("London", 30)]
+
+
+def test_geocoding_prefers_the_town_and_uses_hints():
+    import asyncio
+
+    import httpx
+
+    from app.geo import GeoCache, miles_between
+    from tests.fakes import FakeBoards
+
+    async def go(cache, places):
+        async with httpx.AsyncClient(transport=FakeBoards().transport) as http:
+            return await cache.locate(places, http)
+
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as d:
+        cache = GeoCache(Path(d) / "g.json")
+        assert asyncio.run(go(cache, ["Farnborough", "Farnborough, Warwickshire", "Atlantis"])) == 3
+        assert cache.get("Farnborough") == (51.2869, -0.7526)  # the town, not the village
+        assert cache.get("farnborough,  warwickshire") == (52.14, -1.36)
+        assert cache.get("Atlantis") is None and cache.known("Atlantis")  # remembered, not asked again
+        assert GeoCache(Path(d) / "g.json").get("Farnborough") == (51.2869, -0.7526)  # saved to disk
+    assert round(miles_between((53.7965, -1.5478), (51.5072, -0.1276))) == 169

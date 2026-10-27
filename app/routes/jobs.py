@@ -10,7 +10,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app.deps import get_db, require_user, safe_next, templates
-from app.matching import STRONG_MATCH
+from app.matching import STRONG_MATCH, normalise_title
 from app.models import Application, Job, JobSource, Service, User
 from app.security.csrf import verify_csrf
 from app.services import PLUGINS
@@ -56,11 +56,29 @@ def _applications(db: Session, jobs: list[Job]) -> dict[int, Application]:
     return {a.job_id: a for a in rows}
 
 
-def card_context(db: Session, job: Job) -> dict:
+def _saved_like(db: Session, jobs: list[Job]) -> dict[int, Job]:
+    """New job id → a saved job with the same title (another advert for a role you've already saved)."""
+    new = [j for j in jobs if j.state == "new"]
+    if not new:
+        return {}
+    saved = {normalise_title(s.title): s for s in db.exec(select(Job).where(Job.state == "saved")).all()}
+    return {j.id: saved[t] for j in new if (t := normalise_title(j.title)) in saved}
+
+
+def _distances(request: Request, jobs: list[Job]) -> dict[int, list[tuple[str, int, int]]]:
+    """job id → [(area, miles away, radius)], nearest first, for jobs and areas we've been able to place."""
+    areas = request.app.state.criteria_file.load().areas
+    geo = request.app.state.geo
+    return {j.id: d for j in jobs if (d := geo.distances(j.location, areas))} if areas else {}
+
+
+def card_context(db: Session, job: Job, request: Request | None = None) -> dict:
     return {
+        "distances": _distances(request, [job]) if request else {},
         "job": job,
         "sources": _sources(db, [job]).get(job.id, []),
         "applications": _applications(db, [job]),
+        "saved_like": _saved_like(db, [job]),
         "today": date.today(),
         **_helpers(),
     }
@@ -104,6 +122,8 @@ def jobs_page(
             "jobs": jobs,
             "sources": _sources(db, jobs),
             "applications": _applications(db, jobs),
+            "saved_like": _saved_like(db, jobs),
+            "distances": _distances(request, jobs),
             "view": view,
             "views": VIEWS,
             "sort": sort,
@@ -124,7 +144,7 @@ def jobs_page(
 async def fetch_now(request: Request, user: User = Depends(require_user)):
     fetcher = request.app.state.fetcher
     if not fetcher.running:
-        await fetcher.run()
+        await fetcher.run(force=True)
     return RedirectResponse("/jobs?fetched=1", status_code=303)
 
 
@@ -138,7 +158,7 @@ def _get_job(db: Session, job_id: int) -> Job:
 @router.get("/jobs/{job_id}")
 def job_detail(request: Request, job_id: int, user: User = Depends(require_user), db: Session = Depends(get_db)):
     job = _get_job(db, job_id)
-    return templates.TemplateResponse(request, "pages/job_detail.html", {"tab": "jobs", **card_context(db, job)})
+    return templates.TemplateResponse(request, "pages/job_detail.html", {"tab": "jobs", **card_context(db, job, request)})
 
 
 @router.post("/jobs/{job_id}/state")
@@ -159,6 +179,6 @@ def set_state(
     db.commit()
     if request.headers.get("hx-request"):
         return templates.TemplateResponse(
-            request, "_job_card.html", {**card_context(db, job), "previous": previous, "just_changed": True}
+            request, "_job_card.html", {**card_context(db, job, request), "previous": previous, "just_changed": True}
         )
     return RedirectResponse(safe_next(next, f"/jobs/{job_id}"), status_code=303)

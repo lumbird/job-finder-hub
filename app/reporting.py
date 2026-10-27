@@ -158,3 +158,48 @@ def weekly_summary(db: Session, service_key: str, monday: date) -> tuple[str, li
         monday, [(e.activity_date, ACTIVITY_TYPES.get(e.activity_type, ""), e.text) for e in entries]
     )
     return text, entries
+
+
+# ---------- exports ----------
+
+APPLIED_STATUSES = ("applied", "replied", "interview", "offer", "closed")
+
+
+def applied_jobs(db: Session, since: date | None = None, until: date | None = None) -> list[tuple[Application, Job]]:
+    """Every application actually sent, oldest first, optionally within dates."""
+    rows = db.exec(
+        select(Application, Job)
+        .where(Application.job_id == Job.id, Application.applied_at.is_not(None))  # type: ignore[union-attr]
+        .order_by(Application.applied_at)
+    ).all()
+    out = []
+    for app, job in rows:
+        day = app.applied_at.date()
+        if (since and day < since) or (until and day > until):
+            continue
+        out.append((app, job))
+    return out
+
+
+def export_rows(db: Session, full: bool, since: date | None = None, until: date | None = None) -> list[list[str]]:
+    """Header plus one row per application. The work coach version is title, date and 'Yes' only."""
+    if not full:
+        rows = [["Job title", "Date applied", "Applied"]]
+        rows += [[job.title, app.applied_at.date().isoformat(), "Yes"] for app, job in applied_jobs(db, since, until)]
+        return rows
+    rows = [["Job title", "Company", "Location", "Date applied", "Status", "CV", "Link", "Notes"]]
+    for app, job in applied_jobs(db, since, until):
+        cv = db.get(CvVersion, app.cv_version_id) if app.cv_version_id else None
+        rows.append(
+            [
+                job.title,
+                job.company,
+                job.location,
+                app.applied_at.date().isoformat(),
+                app.status.title(),
+                cv.label if cv else "",
+                job.url,
+                app.notes,
+            ]
+        )
+    return rows

@@ -24,15 +24,14 @@ def test_applied_entry_reads_like_a_journal_line():
         Activity("applied", MON, role="Junior Python Developer", company="Acme Ltd", location="Leeds", source="Reed", cv_label="Software CV")
     )
     assert text == (
-        "Mon 26 Oct 2026: Applied for Junior Python Developer at Acme Ltd (Leeds), found on Reed. "
-        "Sent my CV (Software CV) and a cover note."
+        "Mon 26 Oct 2026: Applied for Junior Python Developer."
     )
 
 
 def test_interview_and_follow_up_entries():
-    assert UC.format_entry(Activity("interview", MON, role="Tech", company="Volt")) == "Mon 26 Oct 2026: Interview arranged for Tech at Volt."
+    assert UC.format_entry(Activity("interview", MON, role="Tech", company="Volt")) == "Mon 26 Oct 2026: Interview arranged for Tech."
     assert UC.format_entry(Activity("follow_up", MON, role="Tech", company="Volt")) == (
-        "Mon 26 Oct 2026: Followed up on my application for Tech at Volt."
+        "Mon 26 Oct 2026: Followed up on my application for Tech."
     )
 
 
@@ -86,8 +85,8 @@ def test_reporting_an_application_uses_its_details(db):
     app = _application(db)
     entry = reporting.report_application(db, app, "applied", "universal_credit")
     assert entry.state == "ready" and entry.activity_date == date(2026, 10, 27)
-    assert entry.text.startswith("Tue 27 Oct 2026: Applied for Junior Developer at Acme (Leeds), found on Reed.")
-    assert "Main CV" in entry.text
+    assert entry.text.startswith("Tue 27 Oct 2026: Applied for Junior Developer.")
+    assert "Main CV" not in entry.text and "Acme" not in entry.text  # title and date only
 
 
 def test_choosing_twice_does_not_duplicate(db):
@@ -234,7 +233,7 @@ def test_prompt_after_applying_then_report(hub):
     assert "Added to Ready to paste" in page
     assert "Universal Credit: Applied for a job · Ready to paste" in page
     assert "Report this to Universal Credit?" not in hub.get(f"/applications/{app.id}?done=applied").text
-    assert "Applied for Junior Developer at Acme" in hub.get("/reporting").text
+    assert "Applied for Junior Developer." in hub.get("/reporting").text
 
 
 def test_nothing_reported_without_choosing(hub):
@@ -266,3 +265,21 @@ def test_report_from_batch_queue(hub):
     r = _post(hub, f"/applications/{app.id}/report", activity_type="applied", next=f"/clusters/{cid}/queue")
     assert r.headers["location"] == f"/clusters/{cid}/queue?done=queued"
     assert "Report Junior Developer to Universal Credit" not in hub.get(f"/clusters/{cid}/queue").text
+
+
+def test_export_applied_jobs(hub):
+    with Session(hub.app.state.engine) as db:
+        _application(db)
+    r = hub.get("/reporting/export/applied.csv?detail=coach")
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    lines = r.text.lstrip("﻿").splitlines()
+    assert lines == ["Job title,Date applied,Applied", "Junior Developer,2026-10-27,Yes"]  # nothing else shared
+
+    full = hub.get("/reporting/export/applied.csv?detail=full").text
+    assert "Acme" in full and "Main CV" in full and "Applied" in full
+
+    text = hub.get("/reporting/export/applied.txt?detail=coach").text
+    assert "2026-10-27  Junior Developer" in text and "Acme" not in text
+    assert "Junior Developer" not in hub.get("/reporting/export/applied.csv?since=2026-10-28").text
+    assert hub.get("/reporting/export/applied.pdf").status_code == 404

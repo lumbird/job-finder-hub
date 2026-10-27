@@ -2,6 +2,7 @@
 
 There's no public API, and scripting a login to a government account is fragile
 and risky (spec: Constraints), so the hub only prepares text for you to paste.
+Entries share as little as possible: the job title and the date. No employer, place, board or CV.
 """
 
 from __future__ import annotations
@@ -21,15 +22,12 @@ class UniversalCredit(ReportingPlugin):
     summary = "Work search entries ready to copy into your journal."
 
     def format_entry(self, a: Activity) -> str:
-        job = a.role + (f" at {a.company}" if a.company else "")
-        where = f" ({a.location})" if a.location else ""
-        found = f", found on {a.source}" if a.source else ""
+        job = a.role
         detail = a.detail.strip()
         if a.activity_type == "applied":
-            sent = f"Sent my CV ({a.cv_label}) and a cover note." if a.cv_label else "Sent my CV and a cover note."
-            body = f"Applied for {job}{where}{found}. {sent}"
+            body = f"Applied for {job}."
         elif a.activity_type == "interview":
-            body = f"Interview arranged for {job}{where}."
+            body = f"Interview arranged for {job}."
         elif a.activity_type == "follow_up":
             body = f"Followed up on my application for {job}."
         else:

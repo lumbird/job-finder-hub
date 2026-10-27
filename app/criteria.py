@@ -1,11 +1,12 @@
 """The criteria file (`data/criteria.yaml`): what to search for and how to score it.
 
-Edited as YAML in Profile → Criteria. Each profile is searched and scored
+Edited with the form in Profile → Criteria, or as YAML from there. Each profile is searched and scored
 separately; a job takes the score of whichever profile fits it best.
 """
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -14,9 +15,9 @@ import yaml
 DEFAULT_YAML = """\
 # Job Finder Hub criteria. Saving re-scores every job.
 
-# Where you want to work. Leave blank to search the whole UK.
-location: ""
-distance_miles: 20
+# Where you want to work: each area is searched separately, as a town or city and a radius in miles.
+# Leave the list empty, as [], to search the whole UK.
+areas: []
 # Lowest yearly salary you'd consider (0 = no floor). Jobs with no salary listed still show.
 salary_floor: 0
 # Check for new jobs every this many minutes.
@@ -67,9 +68,14 @@ class Profile:
 
 
 @dataclass
+class Area:
+    name: str
+    miles: int = 20
+
+
+@dataclass
 class Criteria:
-    location: str = ""
-    distance_miles: int = 20
+    areas: list[Area] = field(default_factory=list)  # empty = whole UK
     salary_floor: int = 0
     fetch_every_minutes: int = 60
     calm_mode_on: bool = True
@@ -93,6 +99,25 @@ def _int(value, where: str, minimum: int = 0) -> int:
     if number < minimum:
         raise CriteriaError(f"{where} should be at least {minimum}.")
     return number
+
+
+def _areas(raw: dict) -> list[Area]:
+    if "areas" not in raw:
+        # Older files had one location and distance.
+        name = str(raw.get("location") or "").strip()
+        return [Area(name, _int(raw.get("distance_miles", 20), "distance_miles", 1))] if name else []
+    items = raw.get("areas") or []
+    if not isinstance(items, list):
+        raise CriteriaError("areas should be a list, like [{name: London, miles: 30}].")
+    areas = []
+    for i, a in enumerate(items, 1):
+        if isinstance(a, str):
+            a = {"name": a}
+        if not isinstance(a, dict) or not str(a.get("name") or "").strip():
+            raise CriteriaError(f"Area {i} needs a name, like {{name: London, miles: 30}}.")
+        name = str(a["name"]).strip()
+        areas.append(Area(name, _int(a.get("miles", 20), f"{name}: miles", 1)))
+    return areas
 
 
 def parse(text: str) -> Criteria:
@@ -131,8 +156,7 @@ def parse(text: str) -> Criteria:
         )
 
     return Criteria(
-        location=str(raw.get("location") or "").strip(),
-        distance_miles=_int(raw.get("distance_miles", 20), "distance_miles", 1),
+        areas=_areas(raw),
         salary_floor=_int(raw.get("salary_floor", 0), "salary_floor"),
         fetch_every_minutes=_int(raw.get("fetch_every_minutes", 60), "fetch_every_minutes", 15),
         # YAML reads a bare `on:` key as True, so older files written that way still work.
@@ -140,6 +164,53 @@ def parse(text: str) -> Criteria:
         daily_cap=_int(calm.get("daily_cap", 3), "calm_mode: daily_cap", 1),
         profiles=profiles,
     )
+
+
+def _flow(values: list[str]) -> str:
+    return "[" + ", ".join(json.dumps(v, ensure_ascii=False) for v in values) + "]"
+
+
+def to_yaml(c: Criteria) -> str:
+    """Write criteria back as YAML with the standard notes, so the form and the YAML editor share one file."""
+    lines = [
+        "# Job Finder Hub criteria. Saving re-scores every job.",
+        "# Written by the Criteria form; comments you add by hand are replaced when the form saves.",
+        "",
+        "# Where you want to work: each area is searched separately, as a town or city and a radius in miles.",
+        "# Leave the list empty, as [], to search the whole UK.",
+        *(
+            ["areas:"] + [f"  - {{name: {json.dumps(a.name, ensure_ascii=False)}, miles: {a.miles}}}" for a in c.areas]
+            if c.areas
+            else ["areas: []"]
+        ),
+        "# Lowest yearly salary you'd consider (0 = no floor). Jobs with no salary listed still show.",
+        f"salary_floor: {c.salary_floor}",
+        "# Check for new jobs every this many minutes.",
+        f"fetch_every_minutes: {c.fetch_every_minutes}",
+        "",
+        "calm_mode:",
+        f"  enabled: {'true' if c.calm_mode_on else 'false'}",
+        "  # How many of the best new matches to show on the Today list.",
+        f"  daily_cap: {c.daily_cap}",
+        "",
+        "# Each profile is searched and scored separately.",
+        "#   searches:     what to type into the job sites",
+        "#   keywords:     words that make a job a better fit",
+        "#   must_have:    jobs missing these score lower",
+        "#   dealbreakers: a job whose title contains one of these scores zero",
+        "profiles:",
+    ]
+    for i, p in enumerate(c.profiles):
+        if i:
+            lines.append("")
+        lines += [
+            f"  - name: {json.dumps(p.name, ensure_ascii=False)}",
+            f"    searches: {_flow(p.searches)}",
+            f"    keywords: {_flow(p.keywords)}",
+            f"    must_have: {_flow(p.must_have)}",
+            f"    dealbreakers: {_flow(p.dealbreakers)}",
+        ]
+    return "\n".join(lines) + "\n"
 
 
 class CriteriaFile:

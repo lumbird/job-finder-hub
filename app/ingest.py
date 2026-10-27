@@ -6,13 +6,14 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timedelta
 
 import httpx
 from sqlalchemy import Engine
 from sqlmodel import Session, select
 
 from app.criteria import Criteria
+from app.geo import GeoCache
 from app.matching import fingerprint, score_job
 from app.models import Job, JobSource, Service, utcnow
 from app.security.crypto import SecretBox
@@ -68,6 +69,12 @@ def record_health(db: Session, service: Service, error: ServiceError | None) -> 
 async def check_service(engine: Engine, box: SecretBox, key: str, transport=None) -> Service:
     with Session(engine) as db:
         service = get_service(db, key)
+        if calls_left(service) == 0:
+            service.health_detail = budget_message(service)
+            db.add(service)
+            db.commit()
+            db.refresh(service)
+            return service
         async with httpx.AsyncClient(transport=transport) as http:
             plugin = PLUGINS[key](credentials_for(service, box), http)
             try:
@@ -75,8 +82,82 @@ async def check_service(engine: Engine, box: SecretBox, key: str, transport=None
                 record_health(db, service, None)
             except ServiceError as exc:
                 record_health(db, service, exc)
+            record_calls(db, service, plugin.calls)
         db.refresh(service)
         return service
+
+
+# ---------- call budgets ----------
+
+LIMIT_KEYS = ("every_hours", "per_day", "per_month")
+
+
+def _config(service: Service) -> dict:
+    return json.loads(service.config or "{}")
+
+
+def limits_for(service: Service) -> dict[str, int]:
+    plugin = PLUGINS.get(service.name)
+    merged = {**getattr(plugin, "default_limits", {}), **_config(service).get("limits", {})}
+    return {k: int(merged.get(k) or 0) for k in LIMIT_KEYS}
+
+
+def save_limits(db: Session, service: Service, limits: dict[str, int]) -> None:
+    config = _config(service)
+    config["limits"] = {k: max(0, int(limits.get(k) or 0)) for k in LIMIT_KEYS}
+    service.config = json.dumps(config)
+    db.add(service)
+    db.commit()
+
+
+def usage_for(service: Service, today: date | None = None) -> dict:
+    """Calls made today and this month, and when the last fetch ran (ISO string or None)."""
+    today = today or date.today()
+    u = _config(service).get("usage", {})
+    return {
+        "today": u.get("day_calls", 0) if u.get("day") == today.isoformat() else 0,
+        "month": u.get("month_calls", 0) if u.get("month") == today.strftime("%Y-%m") else 0,
+        "last_fetch": u.get("last_fetch"),
+    }
+
+
+def record_calls(db: Session, service: Service, calls: int, fetched: bool = False, today: date | None = None) -> None:
+    today = today or date.today()
+    used = usage_for(service, today)
+    config = _config(service)
+    config["usage"] = {
+        "day": today.isoformat(),
+        "day_calls": used["today"] + calls,
+        "month": today.strftime("%Y-%m"),
+        "month_calls": used["month"] + calls,
+        "last_fetch": utcnow().isoformat() if fetched else used["last_fetch"],
+    }
+    service.config = json.dumps(config)
+    db.add(service)
+    db.commit()
+
+
+def calls_left(service: Service, today: date | None = None) -> int | None:
+    """Calls still allowed today and this month, or None if there's no cap."""
+    limits, used = limits_for(service), usage_for(service, today)
+    left = [limits[k] - used[u] for k, u in (("per_day", "today"), ("per_month", "month")) if limits[k]]
+    return max(0, min(left)) if left else None
+
+
+def budget_message(service: Service, today: date | None = None) -> str:
+    limits, used = limits_for(service), usage_for(service, today)
+    label = PLUGINS[service.name].label if service.name in PLUGINS else service.name
+    if limits["per_month"] and (used["month"] >= limits["per_month"] or not limits["per_day"]):
+        return f"{label} has used all {limits['per_month']} calls allowed this month. Paused until next month."
+    return f"{label} has used all {limits['per_day']} calls allowed today. Paused until tomorrow."
+
+
+def fetch_due(service: Service, now: datetime | None = None) -> bool:
+    every = limits_for(service)["every_hours"]
+    last = usage_for(service)["last_fetch"]
+    if not every or not last:
+        return True
+    return (now or utcnow()) - datetime.fromisoformat(last) >= timedelta(hours=every) - timedelta(minutes=5)
 
 
 # ---------- jobs ----------
@@ -88,6 +169,7 @@ class FetchSummary:
     merged: int = 0  # same job found on another board
     updated: int = 0
     errors: dict[str, str] = field(default_factory=dict)
+    paused: dict[str, str] = field(default_factory=dict)  # call budget used up
 
     def message(self) -> str:
         if self.errors and not (self.new or self.updated or self.merged):
@@ -98,6 +180,8 @@ class FetchSummary:
         text += "."
         if self.errors:
             text += " Problems: " + " ".join(self.errors.values())
+        if self.paused:
+            text += " " + " ".join(self.paused.values())
         return text
 
 
@@ -169,7 +253,11 @@ def rescore_all(engine: Engine, criteria: Criteria) -> int:
         return len(jobs)
 
 
-async def fetch_all(engine: Engine, box: SecretBox, criteria: Criteria, transport=None) -> FetchSummary:
+async def fetch_all(
+    engine: Engine, box: SecretBox, criteria: Criteria, transport=None, force: bool = False, geo: GeoCache | None = None
+) -> FetchSummary:
+    """Fetch from every connected job site. Scheduled runs skip sites fetched within their every_hours;
+    a forced run (Check now) doesn't, but every run stops at the daily and monthly call caps."""
     summary = FetchSummary()
     today = date.today()
     with Session(engine) as db:
@@ -181,31 +269,49 @@ async def fetch_all(engine: Engine, box: SecretBox, criteria: Criteria, transpor
                 plugin_cls = PLUGINS.get(service.name)
                 if plugin_cls is None or not issubclass(plugin_cls, JobSitePlugin):
                     continue
+                if not force and not fetch_due(service):
+                    continue
+                if calls_left(service, today) == 0:
+                    summary.paused[service.name] = budget_message(service, today)
+                    continue
                 plugin: Plugin = plugin_cls(credentials_for(service, box), http)
                 seen: set[str] = set()
                 error: ServiceError | None = None
-                for profile in criteria.profiles:
-                    for query in profile.searches:
-                        try:
-                            listings = await plugin.search(query, criteria)
-                        except ServiceError as exc:
-                            error = exc
-                            break
-                        for listing in listings:
-                            if listing.external_id in seen:
-                                continue
-                            seen.add(listing.external_id)
-                            if listing.closing_date and listing.closing_date < today:
-                                continue
-                            outcome = upsert_listing(db, service, listing, criteria)
-                            setattr(summary, outcome, getattr(summary, outcome) + 1)
-                        db.commit()
-                    if error:
+                out_of_calls = False
+                # Every search phrase in every area: one call each.
+                jobs_to_run = [(q, a) for p in criteria.profiles for q in p.searches for a in (criteria.areas or [None])]
+                for query, area in jobs_to_run:
+                    left = calls_left(service, today)
+                    if left is not None and plugin.calls >= left:
+                        out_of_calls = True
                         break
+                    try:
+                        listings = await plugin.search(query, criteria, area)
+                    except ServiceError as exc:
+                        error = exc
+                        break
+                    for listing in listings:
+                        if listing.external_id in seen:
+                            continue
+                        seen.add(listing.external_id)
+                        if listing.closing_date and listing.closing_date < today:
+                            continue
+                        outcome = upsert_listing(db, service, listing, criteria)
+                        setattr(summary, outcome, getattr(summary, outcome) + 1)
+                    db.commit()
+                record_calls(db, service, plugin.calls, fetched=True, today=today)
+                if out_of_calls:
+                    summary.paused[service.name] = budget_message(service, today)
                 if error:
                     summary.errors[service.name] = str(error)
                     log.warning("%s: %s", service.name, error)
                 record_health(db, service, error)
+            if geo is not None:
+                # Place the areas and the jobs still in play, for "N miles from <area>" on the cards.
+                places = [a.name for a in criteria.areas] + list(
+                    db.exec(select(Job.location).where(Job.state.in_(("new", "saved"))).distinct()).all()  # type: ignore[union-attr]
+                )
+                await geo.locate(places, http)
         close_expired(db, today)
     log.info("Fetch done: %s", summary.message())
     return summary
@@ -214,8 +320,9 @@ async def fetch_all(engine: Engine, box: SecretBox, criteria: Criteria, transpor
 class Fetcher:
     """Runs one fetch at a time, whether from the schedule or the Fetch now button."""
 
-    def __init__(self, engine: Engine, box: SecretBox, criteria_file, transport=None) -> None:
+    def __init__(self, engine: Engine, box: SecretBox, criteria_file, transport=None, geo: GeoCache | None = None) -> None:
         self.engine = engine
+        self.geo = geo
         self.box = box
         self.criteria_file = criteria_file
         self.transport = transport
@@ -226,7 +333,7 @@ class Fetcher:
     def running(self) -> bool:
         return self.lock.locked()
 
-    async def run(self) -> FetchSummary:
+    async def run(self, force: bool = False) -> FetchSummary:
         async with self.lock:
-            self.last = await fetch_all(self.engine, self.box, self.criteria_file.load(), self.transport)
+            self.last = await fetch_all(self.engine, self.box, self.criteria_file.load(), self.transport, force, self.geo)
             return self.last

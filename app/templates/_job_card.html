@@ -32,7 +32,18 @@
       </span>
     {%- endif %}
   </p>
+  {% set dist = distances.get(job.id) if distances else none %}
+  {% if dist %}
+  <p class="distances"><small>
+    {%- if dist[0][1] > dist[0][2] %}<strong class="outside">Outside your areas.</strong> {% endif -%}
+    {%- for name, miles, radius in dist %}<span class="{{ 'in-area' if miles <= radius }}">{{ miles }} mi from {{ name }}</span>{{ " · " if not loop.last }}{% endfor -%}
+  </small></p>
+  {% endif %}
   <p class="reason">{{ job.match_reason }}</p>
+  {% set twin = saved_like.get(job.id) if saved_like else none %}
+  {% if twin %}
+  <p class="saved-like"><small>You saved a similar advert: <a href="/jobs/{{ twin.id }}">{{ twin.title }}{% if twin.company %} · {{ twin.company }}{% endif %}{% if twin.location %} · {{ twin.location }}{% endif %}</a></small></p>
+  {% endif %}
   {% if sources %}
   <p class="sources"><small>On {{ sources | map(attribute=0) | unique | join(" · ") }}</small></p>
   {% endif %}

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlmodel import Session, select
 
 from app import reporting
@@ -171,3 +173,38 @@ def week(request: Request, start: str = "", user: User = Depends(require_user), 
             "next": (monday + timedelta(days=7)).isoformat() if monday < this_week else None,
         },
     )
+
+
+def _day_or_none(value: str) -> date | None:
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
+@router.get("/reporting/export/applied.{fmt}")
+def export_applied(
+    fmt: str,
+    detail: str = "coach",
+    since: str = "",
+    until: str = "",
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Download every job applied for: the short work coach list, or the full one for your own records."""
+    if fmt not in ("csv", "txt"):
+        raise HTTPException(status_code=404, detail="Pick csv or txt.")
+    full = detail == "full"
+    rows = reporting.export_rows(db, full, _day_or_none(since), _day_or_none(until))
+    name = f"jobs-applied-{'full' if full else 'coach'}-{date.today().isoformat()}.{fmt}"
+    if fmt == "csv":
+        buf = io.StringIO()
+        csv.writer(buf).writerows(rows)
+        body, media = "\ufeff" + buf.getvalue(), "text/csv; charset=utf-8"  # BOM so Excel reads £ and accents
+    else:
+        body = "\n".join(" | ".join(r) for r in rows) + "\n" if full else "\n".join(
+            f"{d}  {title}" for title, d, _ in rows[1:]
+        ) + "\n"
+        body = f"Jobs applied for ({len(rows) - 1})\n\n" + body
+        media = "text/plain; charset=utf-8"
+    return Response(body, media_type=media, headers={"Content-Disposition": f'attachment; filename="{name}"'})

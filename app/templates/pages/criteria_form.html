@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf_field %}
+{% block title %}Criteria · Job Finder Hub{% endblock %}
+{% macro profile_fields(i, p, open=false) %}
+<details class="profile-box"{% if open %} open{% endif %}>
+  <summary>{{ p.name if p else "Add a profile" }}</summary>
+  <label>Name
+    <input name="p{{ i }}_name" value="{{ p.name if p else '' }}"{% if p %} required{% endif %} placeholder="e.g. Junior developer">
+  </label>
+  <label>Searches
+    <textarea name="p{{ i }}_searches" rows="3" placeholder="One per line, e.g. junior python developer">{{ p.searches | join("\n") if p else "" }}</textarea>
+    <small>What to type into the job sites. Each one is one API call per site, per fetch.</small>
+  </label>
+  <label>Keywords
+    <textarea name="p{{ i }}_keywords" rows="2">{{ p.keywords | join(", ") if p else "" }}</textarea>
+    <small>Words that make a job a better fit. Separate with commas or new lines.</small>
+  </label>
+  <label>Must have
+    <textarea name="p{{ i }}_must_have" rows="1">{{ p.must_have | join(", ") if p else "" }}</textarea>
+    <small>Jobs missing these score lower.</small>
+  </label>
+  <label>Dealbreakers
+    <textarea name="p{{ i }}_dealbreakers" rows="1">{{ p.dealbreakers | join(", ") if p else "" }}</textarea>
+    <small>A job whose title contains one of these scores zero.</small>
+  </label>
+  {% if p %}
+  <label><input type="checkbox" name="p{{ i }}_remove" value="1"> Remove this profile</label>
+  {% endif %}
+</details>
+{% endmacro %}
+{% block content %}
+<p><a href="/profile" class="back">‹ Profile</a></p>
+<h1>Criteria</h1>
+<p>What to search for and how to score it. Saving re-scores every job. <a href="/profile/criteria/yaml">Edit as YAML</a></p>
+
+{% if saved %}<p class="notice ok" role="status">Saved. {{ saved }} job{{ "s" if saved != "1" }} re-scored.</p>{% endif %}
+{% if error %}<p class="notice error" role="alert">{{ error }} Nothing was saved.</p>{% endif %}
+
+<form method="post" action="/profile/criteria/form" data-busy>
+  {{ csrf_field(request) }}
+  <section>
+    <h2>Where</h2>
+    <p><small>Each area is a town or city and a radius around it, searched separately. No areas means the whole UK.
+      Each area multiplies the calls: searches × areas per job site.</small></p>
+    <input type="hidden" name="area_count" value="{{ c.areas | length }}">
+    {% for i in range(c.areas | length + area_blanks) %}
+    {% set a = c.areas[i] if i < c.areas | length else none %}
+    <div class="grid area-row">
+      <label>{{ "Area" if a else "Add an area" }}
+        <input name="a{{ i }}_name" value="{{ a.name if a else '' }}" placeholder="e.g. London">
+      </label>
+      <label>Miles around it
+        <input type="number" name="a{{ i }}_miles" min="1" value="{{ a.miles if a else 20 }}">
+      </label>
+      {% if a %}<label class="area-remove"><input type="checkbox" name="a{{ i }}_remove" value="1"> Remove</label>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <section>
+    <h2>Pay</h2>
+    <label>Lowest yearly salary (£)
+      <input type="number" name="salary_floor" min="0" step="500" value="{{ c.salary_floor }}">
+      <small>0 means no floor. Jobs with no salary listed still show.</small>
+    </label>
+  </section>
+
+  <section>
+    <h2>Checking and the Today list</h2>
+    <label>Check for new jobs every (minutes)
+      <input type="number" name="fetch_every_minutes" min="15" value="{{ c.fetch_every_minutes }}">
+      <small>Each job site can also have its own limits under Services.</small>
+    </label>
+    <label><input type="checkbox" role="switch" name="calm_mode_on" value="1"{% if c.calm_mode_on %} checked{% endif %}> Calm mode: show only the best few on Today</label>
+    <label>Jobs on Today
+      <input type="number" name="daily_cap" min="1" value="{{ c.daily_cap }}">
+    </label>
+  </section>
+
+  <section>
+    <h2>Profiles</h2>
+    <p><small>Each profile is searched and scored separately. A job takes the score of the profile it fits best.</small></p>
+    <input type="hidden" name="profile_count" value="{{ c.profiles | length }}">
+    {% for p in c.profiles %}{{ profile_fields(loop.index0, p) }}{% endfor %}
+    {{ profile_fields(c.profiles | length, none) }}
+  </section>
+
+  <button type="submit" class="wide">Save and re-score</button>
+</form>
+{% endblock %}

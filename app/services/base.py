@@ -12,7 +12,7 @@ from typing import ClassVar
 
 import httpx
 
-from app.criteria import Criteria
+from app.criteria import Area, Criteria
 
 USER_AGENT = "JobFinderHub/0.1 (personal job search; single user)"
 
@@ -74,6 +74,9 @@ class Plugin:
     signup_url: ClassVar[str] = ""
     credential_fields: ClassVar[tuple[CredentialField, ...]] = ()
     min_interval: ClassVar[float] = 1.0  # seconds between requests to the same service
+    # Call budget, editable on the service page: every_hours between scheduled fetches, per_day, per_month.
+    # Missing or 0 means no limit.
+    default_limits: ClassVar[dict[str, int]] = {}
 
     _last_request: ClassVar[dict[str, float]] = {}
     _locks: ClassVar[dict[str, asyncio.Lock]] = {}
@@ -81,6 +84,7 @@ class Plugin:
     def __init__(self, credentials: dict[str, str], http: httpx.AsyncClient) -> None:
         self.credentials = credentials
         self.http = http
+        self.calls = 0  # API calls made by this instance, for the call budget
 
     async def check(self) -> None:
         """Make one cheap call; raise ServiceError if it doesn't work."""
@@ -93,6 +97,7 @@ class Plugin:
             wait = self.min_interval - (time.monotonic() - self._last_request.get(self.key, 0))
             if wait > 0:
                 await asyncio.sleep(wait)
+            self.calls += 1
             try:
                 response = await self.http.get(url, headers={"User-Agent": USER_AGENT}, timeout=20, **kwargs)
             except httpx.HTTPError as exc:
@@ -111,7 +116,8 @@ class Plugin:
 class JobSitePlugin(Plugin):
     kind = "job_site"
 
-    async def search(self, query: str, criteria: Criteria) -> list[Listing]:
+    async def search(self, query: str, criteria: Criteria, area: Area | None = None) -> list[Listing]:
+        """One call to the board. `area` None means anywhere in the UK."""
         raise NotImplementedError
 
 
