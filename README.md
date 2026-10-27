@@ -60,3 +60,9 @@ tests/
 - Python 3.11 (what the Pi has) rather than 3.12; the code avoids 3.12-only features.
 - No Docker Compose yet: runs from a venv as your user. The Dockerfile comes when it's time to deploy.
 - Nightly backups arrive with the scheduler in phase 2.
+
+## Licence and disclaimer
+
+MIT licence, © 2026 LumBird. See [LICENSE](LICENSE). You can use, change and share it, as long as the licence and copyright notice stay with it.
+
+Provided as is, with no warranty. You use it at your own risk. The author isn't responsible for any loss, damage or consequences, including to your computer, your data, your job applications or your benefit claim. It isn't affiliated with or endorsed by DWP, Universal Credit, Reed, Adzuna or any job board. Check what you send to any service yourself.

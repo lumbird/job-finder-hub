@@ -2,6 +2,7 @@
 name = "job-finder-hub"
 version = "0.1.0"
 description = "Self-hosted job search hub for one candidate"
+license = "MIT"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]
