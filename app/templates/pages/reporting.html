@@ -110,4 +110,17 @@
     </div>
   </form>
 </section>
+
+<section>
+  <h2>Universal Credit helper</h2>
+  <p><small>A small script for your own browser that adds to the Universal Credit work search page: tick boxes with
+    "Delete selected" (or everything older than N days), and "Add these jobs" for pasting a CSV from above.
+    It only runs when you click its buttons, asks before changing anything, and goes one job at a time.</small></p>
+  <ol>
+    <li><small>Install the free Violentmonkey add-on in your browser.</small></li>
+    <li><small>Open <a href="/static/uc-helper.user.js">uc-helper.user.js</a>. Violentmonkey offers to install it.</small></li>
+    <li><small>Open the work search page on Universal Credit. The helper's blue box appears above your jobs.</small></li>
+  </ol>
+  <p><small>If Universal Credit needs the employer for each job, export the Full list. The helper uses its Company column.</small></p>
+</section>
 {% endblock %}

@@ -283,3 +283,9 @@ def test_export_applied_jobs(hub):
     assert "2026-10-27  Junior Developer" in text and "Acme" not in text
     assert "Junior Developer" not in hub.get("/reporting/export/applied.csv?since=2026-10-28").text
     assert hub.get("/reporting/export/applied.pdf").status_code == 404
+
+
+def test_uc_helper_is_linked_and_served(hub):
+    assert 'href="/static/uc-helper.user.js"' in hub.get("/reporting").text
+    script = hub.get("/static/uc-helper.user.js")
+    assert script.status_code == 200 and "// @match        https://www.universal-credit.service.gov.uk/work-search*" in script.text
