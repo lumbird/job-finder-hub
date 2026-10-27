@@ -367,3 +367,12 @@ progress { margin-bottom: 1.5rem; }
 .entry-actions button { padding: .5rem 1rem; }
 .copy-all { margin-bottom: 1rem; }
 .week-nav { margin-bottom: 1.5rem; }
+
+.notice.prompt { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-color: var(--pico-primary); }
+.notice.prompt form, .notice.prompt button { margin: 0; }
+.report-menu { margin-bottom: .5rem; }
+.report-menu summary { width: 100%; }
+.report-menu ul li { padding: 0; }
+.report-menu .menu-button, .report-menu .report-done { display: block; min-height: var(--hub-tap); padding: .6rem 1rem; }
+.report-menu .report-done { color: var(--pico-muted-color); text-decoration: none; }
+.row-actions .status { align-self: center; }

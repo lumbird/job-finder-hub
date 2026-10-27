@@ -19,7 +19,6 @@ SERVICE = "universal_credit"  # the only reporting target for now; the rules tak
 
 DONE = {
     "logged": "Added to Ready to paste.",
-    "queued": "Added to Ready to paste on the Reporting tab.",
     "reported": "Marked as reported.",
     "all-reported": "All marked as reported.",
     "undone": "Moved back to Ready to paste.",

@@ -213,3 +213,56 @@ def test_week_page(hub):
 def test_services_page_shows_universal_credit_ready(hub):
     html = hub.get("/profile/services").text
     assert '<a href="/reporting">' in html and "Ready" in html
+
+
+# ---------- Report dropdown ----------
+
+
+def _hub_application(hub) -> Application:
+    with Session(hub.app.state.engine) as db:
+        return _application(db)
+
+
+def test_prompt_after_applying_then_report(hub):
+    app = _hub_application(hub)
+    page = hub.get(f"/applications/{app.id}?done=applied").text
+    assert "Report this to Universal Credit?" in page
+
+    r = _post(hub, f"/applications/{app.id}/report", activity_type="applied")
+    assert r.headers["location"] == f"/applications/{app.id}?done=queued"
+    page = hub.get(r.headers["location"]).text
+    assert "Added to Ready to paste" in page
+    assert "Universal Credit: Applied for a job · Ready to paste" in page
+    assert "Report this to Universal Credit?" not in hub.get(f"/applications/{app.id}?done=applied").text
+    assert "Applied for Junior Developer at Acme" in hub.get("/reporting").text
+
+
+def test_nothing_reported_without_choosing(hub):
+    app = _hub_application(hub)
+    hub.get(f"/applications/{app.id}")
+    assert _entries(hub) == []
+    assert "Nothing is reported unless you choose it" in hub.get(f"/applications/{app.id}").text
+
+
+def test_report_rejects_other_activity_types(hub):
+    app = _hub_application(hub)
+    assert _post(hub, f"/applications/{app.id}/report", activity_type="course").status_code == 400
+    assert _post(hub, "/applications/999/report", activity_type="applied").status_code == 404
+
+
+def test_report_from_batch_queue(hub):
+    from app.models import Cluster, ClusterJob
+
+    app = _hub_application(hub)
+    with Session(hub.app.state.engine) as db:
+        cluster = Cluster(name="Batch", state="approved")
+        db.add(cluster)
+        db.flush()
+        db.add(ClusterJob(cluster_id=cluster.id, job_id=app.job_id, queue_state="applied"))
+        db.commit()
+        cid = cluster.id
+    page = hub.get(f"/clusters/{cid}/queue").text
+    assert "Report Junior Developer to Universal Credit" in page
+    r = _post(hub, f"/applications/{app.id}/report", activity_type="applied", next=f"/clusters/{cid}/queue")
+    assert r.headers["location"] == f"/clusters/{cid}/queue?done=queued"
+    assert "Report Junior Developer to Universal Credit" not in hub.get(f"/clusters/{cid}/queue").text

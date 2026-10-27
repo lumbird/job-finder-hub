@@ -10,6 +10,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from app import applications as apps
+from app import reporting
 from app.deps import get_db, require_user, templates
 from app.models import Application, Cluster, ClusterJob, CvVersion, Job, User, utcnow
 from app.security.csrf import verify_csrf
@@ -92,6 +93,7 @@ DONE = {
     "started": "Application started. Fill in the cover note, then open the advert to apply.",
     "saved": "Saved.",
     "applied": "Marked as applied. Nice one.",
+    "queued": "Added to Ready to paste on the Reporting tab.",
 }
 
 
@@ -110,6 +112,11 @@ def detail(request: Request, app_id: int, user: User = Depends(require_user), db
             "cluster": db.get(Cluster, app.cluster_id) if app.cluster_id else None,
             "statuses": apps.STATUSES,
             "done": DONE.get(request.query_params.get("done", "")),
+            "just_applied": request.query_params.get("done") == "applied",
+            "queued": request.query_params.get("done") == "queued",
+            "report_entries": reporting.entries_for_application(db, app.id),
+            "report_targets": {k: p.label for k, p in reporting.reporting_plugins().items()},
+            "report_activities": {k: reporting.ACTIVITY_TYPES[k] for k in reporting.APPLICATION_ACTIVITIES},
             "today": date.today(),
         },
     )
@@ -239,6 +246,12 @@ def queue(request: Request, cluster_id: int, user: User = Depends(require_user),
     rows = apps.cluster_jobs(db, cluster)
     current = apps.next_in_queue(db, cluster)
     app = apps.application_for(db, current[1].id) if current else None
+    by_job = {job.id: apps.application_for(db, job.id) for _, job in rows}
+    reported = {
+        job_id: ("universal_credit", "applied") in reporting.entries_for_application(db, a.id)
+        for job_id, a in by_job.items()
+        if a
+    }
     return templates.TemplateResponse(
         request,
         "pages/queue.html",
@@ -251,6 +264,8 @@ def queue(request: Request, cluster_id: int, user: User = Depends(require_user),
             "done_count": sum(1 for link, _ in rows if link.queue_state != "waiting"),
             "applied_count": sum(1 for link, _ in rows if link.queue_state == "applied"),
             "cv": db.get(CvVersion, cluster.cv_version_id) if cluster.cv_version_id else None,
+            "by_job": by_job,
+            "reported": reported,
         },
     )
 

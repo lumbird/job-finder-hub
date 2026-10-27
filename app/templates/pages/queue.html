@@ -59,8 +59,19 @@
     {% for link, job in rows %}
     <li>
       <span><strong>{{ job.title }}</strong><small>{{ job.company }}</small></span>
-      <span class="status status-{{ 'applied' if link.queue_state == 'applied' else ('closed' if link.queue_state == 'skipped' else 'found') }}">
-        {{ {"applied": "Applied", "skipped": "Skipped", "waiting": "To do"}[link.queue_state] }}
+      <span class="row-actions">
+        {% set a = by_job.get(job.id) %}
+        {% if link.queue_state == "applied" and a and not reported.get(job.id) %}
+        <form method="post" action="/applications/{{ a.id }}/report">
+          {{ csrf_field(request) }}
+          <input type="hidden" name="activity_type" value="applied">
+          <input type="hidden" name="next" value="/clusters/{{ cluster.id }}/queue">
+          <button type="submit" class="secondary outline" aria-label="Report {{ job.title }} to Universal Credit">Report</button>
+        </form>
+        {% endif %}
+        <span class="status status-{{ 'applied' if link.queue_state == 'applied' else ('closed' if link.queue_state == 'skipped' else 'found') }}">
+          {{ {"applied": "Applied", "skipped": "Skipped", "waiting": "To do"}[link.queue_state] }}
+        </span>
       </span>
     </li>
     {% endfor %}

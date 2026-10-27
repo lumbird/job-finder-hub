@@ -23,6 +23,43 @@
 </div>
 {% if cluster %}<p><small>Part of the <a href="/clusters/{{ cluster.id }}">{{ cluster.name }}</a> batch.</small></p>{% endif %}
 
+{% if just_applied and ("universal_credit", "applied") not in report_entries %}
+<div class="notice prompt">
+  <span>Report this to Universal Credit?</span>
+  <form method="post" action="/applications/{{ app.id }}/report">
+    {{ csrf_field(request) }}
+    <input type="hidden" name="activity_type" value="applied">
+    <button type="submit">Yes, add it</button>
+  </form>
+</div>
+{% endif %}
+
+<section>
+  <h2>Report</h2>
+  <details class="dropdown report-menu">
+    <summary role="button" class="secondary outline">Report to…</summary>
+    <ul>
+      {% for key, label in report_targets.items() %}
+        {% for activity, activity_label in report_activities.items() %}
+        {% set entry = report_entries.get((key, activity)) %}
+        <li>
+          {% if entry %}
+          <a href="/reporting" class="report-done">{{ label }}: {{ activity_label }} · {{ "Reported" if entry.state == "reported" else "Ready to paste" }}</a>
+          {% else %}
+          <form method="post" action="/applications/{{ app.id }}/report">
+            {{ csrf_field(request) }}
+            <input type="hidden" name="activity_type" value="{{ activity }}">
+            <button type="submit" class="menu-button">{{ label }}: {{ activity_label }}</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      {% endfor %}
+    </ul>
+  </details>
+  <p><small>Nothing is reported unless you choose it here.</small></p>
+</section>
+
 <form method="post" action="/applications/{{ app.id }}" class="stack">
   {{ csrf_field(request) }}
 
