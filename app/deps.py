@@ -53,6 +53,13 @@ def short_date(value) -> str:
     return value.strftime("%-d %b") if value else ""
 
 
+def asset_version(name: str) -> str:
+    """Cache-busting stamp for static files, so phones pick up CSS/JS changes on refresh."""
+    path = Path(__file__).parent / "static" / name
+    return f"/static/{name}?v={int(path.stat().st_mtime)}" if path.exists() else f"/static/{name}"
+
+
+templates.env.globals["asset"] = asset_version
 templates.env.filters["short_date"] = short_date
 templates.env.globals["salary_text"] = salary_text
 

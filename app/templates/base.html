@@ -19,9 +19,9 @@
   <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   <link rel="stylesheet" href="/static/vendor/pico.min.css">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="{{ asset('app.css') }}">
   <script src="/static/vendor/htmx.min.js" defer></script>
-  <script src="/static/app.js" defer></script>
+  <script src="{{ asset('app.js') }}" defer></script>
 </head>
 <body hx-headers='{"X-CSRF-Token": "{{ csrf_token(request) }}"}'{% if tab %} class="has-tabs"{% endif %}>
   <main class="container">
