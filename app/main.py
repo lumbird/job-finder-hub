@@ -41,7 +41,7 @@ def create_app(settings: Settings | None = None, sleep=asyncio.sleep) -> FastAPI
     app.state.engine = engine
     app.state.secret_box = SecretBox(settings.fernet_key)
     app.state.challenges = ChallengeStore()
-    app.state.setup_code = SetupCode()
+    app.state.setup_code = SetupCode(settings.data_dir / ".setup-code")
     app.state.sleep = sleep  # swapped out in tests so throttling doesn't really wait
 
     with Session(engine) as db:

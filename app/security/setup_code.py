@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import logging
 import secrets
+from pathlib import Path
 
 log = logging.getLogger("hub.setup")
 
@@ -21,15 +22,23 @@ def _digest(code: str) -> str:
 
 
 class SetupCode:
-    def __init__(self) -> None:
+    """Kept in a 0600 file until used, so restarts (and dev auto-reload) don't change it."""
+
+    def __init__(self, path: Path | None = None) -> None:
         self._digest: str | None = None
+        self._path = path
 
     @property
     def active(self) -> bool:
         return self._digest is not None
 
     def issue(self) -> str:
-        code = "-".join("".join(secrets.choice(_ALPHABET) for _ in range(4)) for _ in range(3))
+        code = self._path.read_text().strip() if self._path and self._path.exists() else ""
+        if not code:
+            code = "-".join("".join(secrets.choice(_ALPHABET) for _ in range(4)) for _ in range(3))
+            if self._path:
+                self._path.write_text(code)
+                self._path.chmod(0o600)
         self._digest = _digest(code)
         log.warning(
             "\n\n  ┌──────────────────────────────────────────────┐\n"
@@ -49,3 +58,5 @@ class SetupCode:
 
     def consume(self) -> None:
         self._digest = None
+        if self._path:
+            self._path.unlink(missing_ok=True)

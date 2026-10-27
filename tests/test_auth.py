@@ -58,6 +58,18 @@ def test_setup_creates_account_signs_in_and_uses_up_code(client):
         assert len(db.exec(select(User)).all()) == 1
 
 
+def test_setup_code_survives_restart_until_used(tmp_path, sleeps):
+    from app.main import create_app
+    from tests.conftest import make_settings
+
+    settings = make_settings(tmp_path)
+    first = create_app(settings, sleep=sleeps).state.setup_code.issue()
+    second_app = create_app(settings, sleep=sleeps)
+    assert second_app.state.setup_code.issue() == first
+    second_app.state.setup_code.consume()
+    assert not (tmp_path / ".setup-code").exists()
+
+
 def test_setup_code_tolerates_case_and_spacing(client):
     code = client.app.state.setup_code.issue()
     assert client.app.state.setup_code.check(code.lower().replace("-", " "))
