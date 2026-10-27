@@ -10,10 +10,10 @@
 | 2. Jobs | **Done.** Waiting for real Reed/Adzuna keys to prove it against the live APIs. |
 | 3. Applications and clusters | **Done** (27 Oct). Submit queue opens adverts; no auto-submit. |
 | 4. Emails | Next. Needs Tailscale/HTTPS for OAuth. |
-| 5. Reporting | Not started |
+| 5. Reporting | **Done** (27 Oct), except evidence emails, which wait for phase 4. |
 | 6. Notify and extras | Not started |
 
-104 tests pass (`.venv/bin/pytest`).
+127 tests pass (`.venv/bin/pytest`).
 
 ## The live instance
 
@@ -46,7 +46,7 @@
 
 ## Next session: start here
 
-1. Look at the screenshots and fix the styling.
+1. Look at the screenshots and fix the styling (Applications, batches, Reporting are new since the last ones).
 2. Connect the real keys, run "Check now" on Jobs, and fix anything the live APIs return differently from the samples. Record real responses into `tests/fixtures/`, with keys and personal data removed.
 3. Try phase 3 with real saved jobs (Apply, batches, CV upload) and tweak from feedback.
 4. Phase 4 needs Tailscale first (OAuth needs HTTPS).
@@ -81,7 +81,9 @@ Built as planned below. Batches group saved jobs by their best-fit profile, and 
 - Link replies to applications and update status. Draft replies are saved as drafts, never sent.
 - Tests: recorded sample emails, anonymised.
 
-## Phase 5: Reporting
+## Phase 5: Reporting (done, except evidence emails)
+
+Built: a Report menu on applications, a prompt after "I've applied", Report buttons in batch queues, and the Reporting tab (ready to paste, copy, copy all, edit, mark reported, don't report, undo). It also logs other work search and has a weekly summary for the work coach. Still to do once phase 4 lands: attach confirmation emails as evidence (`report_entry.evidence_email_id` is already there).
 
 - `report_entry` table. A Report dropdown on every action (Universal Credit first).
 - Entry states: Not reported → Ready to paste → Reported. Copy, copy all, weekly summary, mark reported, undo.
