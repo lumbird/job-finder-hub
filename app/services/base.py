@@ -133,3 +133,29 @@ def money(value) -> float | None:
         return None
     return number if number > 0 else None
 
+
+@dataclass
+class Activity:
+    activity_type: str
+    when: date
+    role: str = ""
+    company: str = ""
+    location: str = ""
+    source: str = ""  # board it was found on
+    cv_label: str = ""
+    detail: str = ""  # free text for activities that aren't applications
+
+
+class ReportingPlugin(Plugin):
+    """A place work search gets reported. Formats text only; never logs in anywhere."""
+
+    kind = "reporting"
+
+    async def check(self) -> None:
+        return None  # nothing to connect
+
+    def format_entry(self, activity: Activity) -> str:
+        raise NotImplementedError
+
+    def weekly_text(self, week_start: date, entries: list[tuple[date, str, str]]) -> str:
+        raise NotImplementedError

@@ -5,8 +5,9 @@ from __future__ import annotations
 from app.services.adzuna import Adzuna
 from app.services.base import PlannedService, Plugin
 from app.services.reed import Reed
+from app.services.universal_credit import UniversalCredit
 
-PLUGINS: dict[str, type[Plugin]] = {p.key: p for p in (Reed, Adzuna)}
+PLUGINS: dict[str, type[Plugin]] = {p.key: p for p in (Reed, Adzuna, UniversalCredit)}
 
 PLANNED: tuple[PlannedService, ...] = (
     PlannedService("find_an_apprenticeship", "Find an Apprenticeship", "job_site", "GOV.UK apprenticeship vacancies.", 6),
@@ -16,7 +17,6 @@ PLANNED: tuple[PlannedService, ...] = (
     PlannedService("careers_feeds", "Careers page feeds", "job_site", "RSS feeds from employers' careers pages.", 6),
     PlannedService("gmail", "Gmail", "email", "Read job emails and save reply drafts.", 4),
     PlannedService("outlook", "Outlook", "email", "Read job emails and save reply drafts.", 4),
-    PlannedService("universal_credit", "Universal Credit", "reporting", "Entries formatted for copy and paste.", 5),
 )
 
 KIND_LABELS = {"job_site": "Job sites", "email": "Emails", "reporting": "Reporting"}
