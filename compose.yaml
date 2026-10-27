@@ -1,0 +1,19 @@
+# Runs on the Pi on the existing ipvlan network, like the other containers there.
+# Open http://10.254.0.20/ from the home network.
+services:
+  job-finder-hub:
+    build: .
+    image: job-finder-hub:latest
+    container_name: job-finder-hub
+    hostname: job-finder-hub
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+    networks:
+      ipvlan_sub_network:
+        ipv4_address: 10.254.0.20
+
+networks:
+  ipvlan_sub_network:
+    external: true
